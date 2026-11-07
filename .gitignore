@@ -3,3 +3,4 @@
 .env
 params*.json
 __pycache__/
+runner/certs/*.crt

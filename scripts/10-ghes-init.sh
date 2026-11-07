@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Step 10: first-time setup of the GHES appliance through the Management Console API (port 8443):
+# Step 10 (workstation): first-time setup of the GHES appliance through the Management Console API (port 8443):
 # upload the trial license, set the root site administrator password, host name and basic settings, apply.
-# Usage: ./10-ghes-init.sh ~/ghes-trial.ghl
+# From Cloud Shell: source lib/ws.sh && ws "bash 10-ghes-init.sh"   (step 06 copies the license to the workstation)
 source ./00-variables.sh >/dev/null
-LIC="${1:-$HOME/ghes-trial.ghl}"; [ -f "$LIC" ] || { echo "License file not found: $LIC (upload it to Cloud Shell first)"; exit 1; }
+LIC="${1:-$LAB/ghes-trial.ghl}"; [ -f "$LIC" ] || { echo "License file not found: $LIC (upload it to Cloud Shell first)"; exit 1; }
 M="https://$GHES_HOST:8443/manage/v1"
 echo "Waiting for the appliance to answer on :8443 ..."
 until curl -sk -o /dev/null -w '%{http_code}' --max-time 20 "https://$GHES_HOST:8443/setup/start" | grep -qvE '^(000|502|503)$'; do sleep 20; printf .; done; echo
@@ -31,4 +31,3 @@ for i in $(seq 1 80); do   # up to 40 minutes
   sleep 30
 done
 echo "$S" | jq '{running, successful}'
-lab_backup

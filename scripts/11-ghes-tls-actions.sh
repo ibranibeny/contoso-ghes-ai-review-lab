@@ -1,35 +1,37 @@
 #!/usr/bin/env bash
-# Step 11: TLS with Let's Encrypt (ACME HTTP-01 needs port 80 open to the internet for a few minutes),
-# then GitHub Actions with Azure Blob storage reached through the private endpoint.
-# Usage: bash 11-ghes-tls-actions.sh [--actions-only]
+# Step 11 (workstation): TLS certificate from the Contoso lab CA, then GitHub Actions with Azure Blob storage
+# reached through the private endpoint. One configuration run applies both (10-15 minutes).
+# From Cloud Shell: source lib/ws.sh && ws "nohup bash 11-ghes-tls-actions.sh > /var/log/lab-11.log 2>&1 &"
 source ./00-variables.sh >/dev/null
+M="https://$GHES_HOST:8443/manage/v1"; AUTH="api_key:$GHES_MGMT_PASS"
 SSH="ssh -p 122 -i $LAB/id_rsa -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 admin@$GHES_HOST"
 
-if [ "${1:-}" != "--actions-only" ]; then
-  echo "--- TLS: Let's Encrypt certificate for $GHES_HOST"
-  echo "    temporary NSG rule: port 80 from the internet for the ACME HTTP-01 challenge"
-  az network nsg rule create -g "$RG_ONP" --nsg-name nsg-ghes -n Temp-ACME-HTTP --priority 150 --access Allow \
-    --direction Inbound --protocol Tcp --source-address-prefixes Internet --destination-port-ranges 80 -o none
-  $SSH -- "ghe-ssl-acme -e" 2>&1 | tail -8; RC=${PIPESTATUS[0]}
-  az network nsg rule delete -g "$RG_ONP" --nsg-name nsg-ghes -n Temp-ACME-HTTP -o none
-  echo "    ACME exit code: $RC (temporary rule removed)"
-  echo | openssl s_client -connect "$GHES_HOST:443" -servername "$GHES_HOST" 2>/dev/null | openssl x509 -noout -issuer -enddate
-fi
+echo "--- appliance reachable from the workstation (private DNS: $(getent hosts "$GHES_HOST" | awk '{print $1}'))"
+curl -sk -u "$AUTH" "$M/config/apply" | jq -c '{last_run_running: .running, last_run_successful: .successful}'
 
-echo "--- GitHub Actions storage (Azure Blob through the private endpoint)"
-# The appliance must resolve the storage account to its private endpoint (10.30.2.x): the private DNS zone
-# link is created at the end of the infrastructure deployment.
-IP=$($SSH -- "getent hosts $ST_ACTIONS.blob.core.windows.net" | awk '{print $1}')
-echo "    $ST_ACTIONS.blob.core.windows.net -> ${IP:-unresolved}"
-case "$IP" in
-  10.*) ;;
-  *) echo "    Not private yet. Wait for the deployment to finish (bash 02-wait-infra.sh), then: bash 11-ghes-tls-actions.sh --actions-only"; exit 0 ;;
-esac
-KEY=$(az storage account keys list -g "$RG_ONP" -n "$ST_ACTIONS" --query '[0].value' -o tsv)
-CS="DefaultEndpointsProtocol=https;AccountName=$ST_ACTIONS;AccountKey=$KEY;EndpointSuffix=core.windows.net"
-echo "    connection test (ghe-actions-precheck):"
-$SSH -- "echo No | ghe-actions-precheck -p azure -cs '$CS'" 2>&1 | grep -viE 'accountkey|connection string' | tail -8
-echo "    enabling GitHub Actions (ghe-config + ghe-config-apply, about 10 minutes)"
-$SSH -- "ghe-config app.actions.enabled true && ghe-config secrets.actions.storage.blob-provider azure && ghe-config secrets.actions.storage.azure.connection-string '$CS' && ghe-config-apply" 2>&1 | tail -5
-$SSH -- "ghe-actions-check" 2>&1 | tail -10 || true
-lab_backup
+echo "--- TLS: certificate for $GHES_HOST issued by the Contoso lab CA"
+jq -n --rawfile c "$LAB/pki/ghes.crt" --rawfile k "$LAB/pki/ghes.key" '{github_ssl: {enabled: true, cert: $c, key: $k}}' > /tmp/tls.json
+curl -sk -u "$AUTH" -X PUT "$M/config/settings" -H 'Content-Type: application/json' --data @/tmp/tls.json -w 'settings: HTTP %{http_code}\n'
+rm -f /tmp/tls.json
+
+echo "--- GitHub Actions storage: Azure Blob through the private endpoint"
+echo "    appliance resolves $ST_ACTIONS.blob.core.windows.net to: $($SSH -- "getent hosts $ST_ACTIONS.blob.core.windows.net" | awk '{print $1}')"
+$SSH -- "echo No | ghe-actions-precheck -p azure -cs '$ACTIONS_STORAGE_CS'" 2>&1 | grep -viE 'accountkey' | tail -6
+$SSH -- "ghe-config app.actions.enabled true && ghe-config secrets.actions.storage.blob-provider azure && ghe-config secrets.actions.storage.azure.connection-string '$ACTIONS_STORAGE_CS'" \
+  && echo "    Actions settings stored"
+
+echo "--- apply (TLS + Actions)"
+RUN=$(curl -sk -u "$AUTH" -X POST "$M/config/apply" | jq -r '.run_id // empty'); echo "run_id=$RUN"
+sleep 60
+for i in $(seq 1 60); do   # up to 30 minutes
+  S=$(curl -sk -m 20 -u "$AUTH" "$M/config/apply${RUN:+?run_id=$RUN}")
+  echo "$(date +%H:%M:%S) $(echo "$S" | jq -c '{running, successful}' 2>/dev/null || echo 'console restarting')"
+  echo "$S" | jq -e '.running == false' >/dev/null 2>&1 && break
+  sleep 30
+done
+
+echo "--- verify TLS with the lab CA and the Actions services"
+echo | openssl s_client -connect "$GHES_HOST:443" -servername "$GHES_HOST" -CAfile "$LAB/pki/ca.crt" 2>/dev/null \
+  | grep -E '^(subject|issuer)=|Verify return code'
+$SSH -- "ghe-actions-check" 2>&1 | tail -6
+echo "STEP 11 DONE"

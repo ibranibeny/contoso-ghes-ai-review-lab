@@ -2,9 +2,10 @@
 # =============================================================================
 # AI code review for GHES - hybrid lab
 # 00-variables.sh: shared settings. Every step script sources this file.
-# Run from Azure Cloud Shell (Bash), inside the scripts/ folder.
+# Run from Azure Cloud Shell (Bash), inside the scripts/ folder. Steps marked "workstation" run on the private
+# admin workstation through Azure Run Command (see lib/ws.sh).
 # =============================================================================
-az config set extension.use_dynamic_install=yes_without_prompt -o none 2>/dev/null
+command -v az >/dev/null 2>&1 && az config set extension.use_dynamic_install=yes_without_prompt -o none 2>/dev/null
 
 export DEPLOYMENT="ghes-ai-lab"
 export LOC_ONP="indonesiacentral"   # "Contoso on-prem" data centre (GHES appliance)
@@ -26,26 +27,14 @@ export RUNNER_SET="ai-review-runners"               # ARC scale set name = the r
 export RUNNER_NS="arc-runners"
 export RUNNER_SA="ghes-reviewer"
 
-# Lab state: secrets are generated once and kept in ~/.ghes-lab (mode 600). Cloud Shell without a storage
-# account starts every session with an empty home folder, so the state is also backed up to the lab Key Vault
-# (secret "lab-state") and restored from there automatically.
+# Lab state: secrets are generated once and kept in ~/.ghes-lab (mode 600) in Cloud Shell. The admin workstation
+# (step 05) holds a copy in /root/.ghes-lab. A fresh Cloud Shell session (empty home folder) gets the state back
+# from the workstation with: bash 06-workstation-sync.sh --pull
 export LAB="$HOME/.ghes-lab"
 mkdir -p "$LAB" && chmod 700 "$LAB"
-lab_kv() { az keyvault list -g "$RG_AZ" --query "[0].name" -o tsv 2>/dev/null; }
-lab_backup() { # save ~/.ghes-lab to Key Vault (best effort)
-  local kv; kv=$(lab_kv); [ -n "$kv" ] || return 0
-  local tmp; tmp=$(mktemp)
-  tar -C "$HOME" --exclude='*.ghl' -czf - .ghes-lab | base64 -w0 > "$tmp"
-  az keyvault secret set --vault-name "$kv" -n lab-state --file "$tmp" -o none 2>/dev/null \
-    && echo "Lab state backed up to Key Vault $kv"
-  rm -f "$tmp"
-}
-if [ ! -f "$LAB/secrets.env" ]; then
-  KV_RESTORE=$(lab_kv)
-  if [ -n "$KV_RESTORE" ] && az keyvault secret show --vault-name "$KV_RESTORE" -n lab-state --query value -o tsv 2>/dev/null | base64 -d | tar -C "$HOME" -xzf - 2>/dev/null; then
-    echo "Lab state restored from Key Vault $KV_RESTORE"
-  fi
-fi
+HAS_AZ=; command -v az >/dev/null 2>&1 && HAS_AZ=1
+# On the admin workstation there is no Azure CLI: the resolved settings come from lab.env (written by step 06).
+if [ -z "$HAS_AZ" ] && [ -f "$LAB/lab.env" ]; then source "$LAB/lab.env"; fi
 if [ ! -f "$LAB/secrets.env" ]; then
   umask 077
   {
@@ -56,13 +45,11 @@ if [ ! -f "$LAB/secrets.env" ]; then
 fi
 # shellcheck disable=SC1091
 source "$LAB/secrets.env"
-if [ ! -f "$LAB/id_rsa" ]; then
-  ssh-keygen -q -t rsa -b 4096 -N '' -C 'ghes-lab' -f "$LAB/id_rsa"
-  lab_backup >/dev/null
-fi
+[ -f "$LAB/id_rsa" ] || ssh-keygen -q -t rsa -b 4096 -N '' -C 'ghes-lab' -f "$LAB/id_rsa"
 export SSH_PUB="$LAB/id_rsa.pub"
 
 # Read deployment outputs once the deployment has succeeded.
+if [ -n "$HAS_AZ" ]; then
 out() { az deployment sub show -n "$DEPLOYMENT" --query "properties.outputs.$1.value" -o tsv 2>/dev/null; }
 DEPLOY_STATE=$(az deployment sub show -n "$DEPLOYMENT" --query properties.provisioningState -o tsv 2>/dev/null)
 if [ -z "${LAB_OUTPUTS_LOADED:-}" ] && [ "$DEPLOY_STATE" = "Succeeded" ]; then
@@ -94,15 +81,22 @@ if [ -z "${ACR_NAME:-}" ] && [ -n "${GHES_HOST:-}" ]; then
   UNIQ=${GHES_HOST#ghes-contoso-}; UNIQ=${UNIQ%%.*}
   export AI_ENDPOINT="${AI_ENDPOINT:-https://apim-ghes-$UNIQ.azure-api.net/openai/v1}"
 fi
+fi  # HAS_AZ
 
+# TLS: the appliance certificate is issued by the Contoso lab CA (step 06 creates it, step 11 installs it).
+CA_OPT=(-k); [ -f "$LAB/pki/ca.crt" ] && CA_OPT=(--cacert "$LAB/pki/ca.crt")
 ghes_api() { # ghes_api METHOD PATH [JSON] - REST call to the appliance with the admin token
   local m="$1" p="$2" d="${3:-}"
-  curl -sS -X "$m" -H "Authorization: Bearer $(cat "$LAB/ghes-token" 2>/dev/null)" \
+  curl -sS "${CA_OPT[@]}" -X "$m" -H "Authorization: Bearer $(cat "$LAB/ghes-token" 2>/dev/null)" \
        -H "Accept: application/vnd.github+json" ${d:+-H "Content-Type: application/json" -d "$d"} \
        "https://$GHES_HOST/api/v3$p"
 }
 
-echo "Subscription : $(az account show --query name -o tsv) ($(az account show --query id -o tsv))"
-echo "Deployment   : $DEPLOYMENT  |  $RG_ONP ($LOC_ONP)  |  $RG_AZ ($LOC_AZ)  |  $RG_AI ($LOC_AI)"
+if [ -n "$HAS_AZ" ]; then
+  echo "Subscription : $(az account show --query name -o tsv) ($(az account show --query id -o tsv))"
+  echo "Deployment   : $DEPLOYMENT  |  $RG_ONP ($LOC_ONP)  |  $RG_AZ ($LOC_AZ)  |  $RG_AI ($LOC_AI)"
+else
+  echo "Admin workstation $(hostname) - settings from $LAB/lab.env"
+fi
 [ -n "${GHES_HOST:-}" ] && echo "GHES         : https://$GHES_HOST"
 true

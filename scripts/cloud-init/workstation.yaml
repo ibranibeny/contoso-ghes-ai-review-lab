@@ -1,0 +1,11 @@
+#cloud-config
+# Contoso admin / developer workstation inside the "on-premises" network (no public IP).
+# Tools to administer GHES and to capture the demo screenshots (headless Chromium through Playwright).
+package_update: true
+packages: [git, jq, curl, unzip, openssl, python3-venv, python3-pip, ffmpeg, fonts-dejavu-core, fonts-noto-color-emoji]
+runcmd:
+  - [bash, -c, "python3 -m venv /opt/lab/venv && /opt/lab/venv/bin/pip install -q --upgrade pip && /opt/lab/venv/bin/pip install -q playwright requests"]
+  - [bash, -c, "/opt/lab/venv/bin/playwright install --with-deps chromium > /var/log/lab-playwright.log 2>&1"]
+  - [bash, -c, "curl -sSL https://github.com/oras-project/oras/releases/download/v1.2.0/oras_1.2.0_linux_amd64.tar.gz | tar -xz -C /usr/local/bin oras"]
+  - [bash, -c, "git clone -q https://github.com/ibranibeny/contoso-ghes-ai-review-lab /opt/lab/repo"]
+  - [bash, -c, "mkdir -p /opt/lab/shots /root/.ghes-lab && chmod 700 /root/.ghes-lab && touch /opt/lab/ready"]

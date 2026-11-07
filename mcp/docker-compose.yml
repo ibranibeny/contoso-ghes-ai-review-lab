@@ -9,6 +9,10 @@ services:
     command: ["http", "--port", "8082", "--read-only", "--toolsets", "repos,pull_requests"]
     environment:
       GITHUB_HOST: https://${GHES_HOST:?set GHES_HOST in .env}
+      SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+    volumes:
+      # The host's CA bundle, which includes the Contoso lab CA that issued the GHES certificate (step 30).
+      - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
     ports:
       - "8082:8082"
     restart: unless-stopped
