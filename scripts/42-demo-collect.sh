@@ -45,6 +45,8 @@ if [ "$PHASE" = after ]; then
   RUN2=$(jq -r '[.runs[] | select(.name=="AI review")] | sort_by(.id) | .[-1].id' "$OUT/demo-result.json")
   /opt/lab/venv/bin/python lib/shots.py \
     "41-01-pr-after-fix=/$O/$R/pull/$PR#full" \
+    "41-01-pr-after-fix-review2=/$O/$R/pull/$PR~last:AI review · Microsoft Foundry~300" \
+    "41-01-pr-after-fix-mergebox=/$O/$R/pull/$PR~Review required;approving review;Merging is blocked~150" \
     "41-02-checks-green=/$O/$R/pull/$PR/checks" \
     "41-03-actions-runs=/$O/$R/actions" \
     "41-04-second-run=/$O/$R/actions/runs/$RUN2"
@@ -52,6 +54,11 @@ if [ "$PHASE" = after ]; then
 fi
 /opt/lab/venv/bin/python lib/shots.py \
   "40-03-pr-conversation=/$O/$R/pull/$PR#full" \
+  "40-03-pr-conversation-summary=/$O/$R/pull/$PR~AI review · Microsoft Foundry~300" \
+  "40-03-pr-conversation-mergebox=/$O/$R/pull/$PR~Merging is blocked;Review required;failing check~150" \
+  "40-04-files-inline-inline=/$O/$R/pull/$PR~CSG-SQL-01~320" \
+  "40-04-files-inline-injection=/$O/$R/pull/$PR~CSG-INJ-05~320" \
+  "40-04-files-inline-secret=/$O/$R/pull/$PR~CSG-SEC-02~320" \
   "40-04-files-inline=/$O/$R/pull/$PR/files#full" \
   "40-05-checks=/$O/$R/pull/$PR/checks" \
   "40-06-actions-run=/$O/$R/actions/runs/$RUN1" \
