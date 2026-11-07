@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Apply AI code review to GitHub Enterprise Server</title><meta name="description" content="How to roll out AI pull request review on GitHub Enterprise Server: prerequisites, phases, workflow, rules, security and FAQ.">
+<link rel="stylesheet" href="assets/site.css"></head>
+<body>
+<header class="top"><div class="wrap">
+  <a class="brand" href="index.html"><span class="logo">AI</span>AI code review for GHES</a>
+  <nav class="nav"><a href="index.html">Overview</a><a href="demo.html">Demo</a><a href="apply.html" class=on>Adopt</a><a href="guide.html">Workshop</a><a href="index.html#architecture">Architecture</a><a href="studio/index.html">Agent studio</a><a href="https://github.com/ibranibeny/contoso-ghes-ai-review-lab" class=cta>GitHub repo</a></nav>
+</div></header>
+
+<section class="hero"><div class="wrap">
+  <span class="eyebrow">Adoption guide · for platform, security and engineering leads</span>
+  <h1>Apply AI code review to your GitHub Enterprise Server</h1>
+  <p class="lead">GHES doesn't include Copilot code review, but it has everything needed to run your own: GitHub Actions on your runners, rulesets, and an API the reviewer can read. This page is the path we recommend, from first conversation to every pull request reviewed.</p>
+  <div class="btns"><a class="btn primary" href="demo.html">See the demo review first</a><a class="btn" href="guide.html">Workshop: build it step by step</a><a class="btn" href="https://github.com/ibranibeny/contoso-ghes-ai-review-lab">Reuse the code</a></div>
+</div></section>
+
+<section class="block"><div class="wrap">
+  <p class="kicker">The pattern</p>
+  <h2>What happens on every pull request</h2>
+  <ol class="flowlist"><li><span>1</span>Developer opens a pull request on GHES</li><li><span>2</span>GHES queues the AI review workflow</li><li><span>3</span>A private runner picks it up with its managed identity</li><li><span>4</span>The reviewer reads the diff, then asks MCP servers for context and rules</li><li><span>5</span>The AI gateway checks the token and the budget</li><li><span>6</span>Microsoft Foundry returns a structured review</li><li><span>7</span>Comments, summary and a status land on the pull request</li><li><span>8</span>A human approves and merges</li></ol>
+  <div class="why"><b>Three design choices make this safe to adopt.</b> The workflow is ordinary GitHub Actions on your own runners, so your existing controls apply. Every hop is keyless, from the runner to the model. And the reviewer only advises: it comments and reports a status, and a person still approves the merge.</div>
+</div></section>
+
+<section class="block"><div class="wrap">
+  <p class="kicker">Prerequisites</p>
+  <h2>What you need in place</h2>
+  <table><thead><tr><th style="width:18%">Component</th><th style="width:40%">Minimum</th><th>Notes</th></tr></thead><tbody><tr><td><b>GitHub Enterprise Server</b></td><td>GitHub Actions enabled, with external blob storage. A recent release (we used 3.22.3).</td><td>Rulesets with <i>Require workflows to pass before merging</i> let you enforce one central review workflow across an organisation.</td></tr><tr><td><b>Self-hosted runners</b></td><td>Linux runners that can reach GHES and Azure privately. We used Actions Runner Controller on private AKS.</td><td>Virtual machine runners work too. Give them a managed identity; never store an API key on a runner.</td></tr><tr><td><b>Network path</b></td><td>ExpressRoute or site-to-site VPN between the GHES network and the Azure landing zone; private DNS for GHES, the gateway and Foundry.</td><td>Only outbound connections from runners. Nothing in Azure needs to call GHES except the MCP server, over the same private path.</td></tr><tr><td><b>Microsoft Foundry</b></td><td>One AI Services resource with a chat model deployment, local (key) authentication disabled, private endpoint.</td><td>Choose the deployment type for your data residency: Standard (regional) or Data Zone keep processing in a geography; Global Standard does not.</td></tr><tr><td><b>AI gateway</b></td><td>Azure API Management on a private IP in front of Foundry.</td><td>Validates the caller's Entra ID token, enforces a token budget per repository, emits token metrics, uses its own managed identity to call Foundry.</td></tr><tr><td><b>MCP servers</b></td><td>GitHub's MCP server (read-only, <code>GITHUB_HOST</code> pointed at GHES) and a small server for your engineering standards.</td><td>Run them next to the runners. They give the model context: other files in the repository, and the rules it must cite.</td></tr><tr><td><b>Observability</b></td><td>Log Analytics and Application Insights.</td><td>Token use and latency per repository from the gateway; review outcomes from the job summaries and commit statuses.</td></tr></tbody></table>
+</div></section>
+
+<section class="block"><div class="wrap">
+  <p class="kicker">Rollout</p>
+  <h2>A four-phase plan</h2>
+  <p class="sub">Most of the effort is not technical. It goes into agreeing the data path with security, and into tuning the reviewer until developers find its comments worth reading.</p>
+  <div class="grid2"><div class="card"><span class="tag t-blue">Phase 0 · 1 week</span><h4>Decide</h4><ul class="tight"><li>Pick 3–5 pilot repositories with active pull request traffic and owners who want to try it.</li><li>Agree the data path with security: which region and deployment type, what leaves the GHES network (diffs and file excerpts, never secrets), who can see the logs.</li><li>Choose success measures: time to first review, share of AI comments accepted, defects caught before merge, developer satisfaction.</li></ul></div><div class="card"><span class="tag t-purple">Phase 1 · 1–2 weeks</span><h4>Build the platform</h4><ul class="tight"><li>Deploy Foundry, API Management, private endpoints and DNS with Bicep. The <code>infra/</code> folder of this lab is a starting point.</li><li>Create the runner pool with a managed identity, and trust your internal CA in the runner image.</li><li>Run the two MCP servers and load your engineering standards (Markdown files with rule IDs) into the standards server.</li></ul></div><div class="card"><span class="tag t-orange">Phase 2 · 2–4 weeks</span><h4>Pilot in advisory mode</h4><ul class="tight"><li>Add the workflow to the pilot repositories. The <code>ai-review/foundry</code> status is reported but not yet required.</li><li>Collect feedback on every comment (helpful, noise, wrong). Tune the reviewer instructions and the standards, not the model.</li><li>Watch tokens per review in the gateway metrics and set a per-repository budget.</li></ul></div><div class="card"><span class="tag t-green">Phase 3 · ongoing</span><h4>Enforce and scale</h4><ul class="tight"><li>Make <code>ai-review/foundry</code> a required status for critical and high findings. Keep one human approval.</li><li>Use an organisation ruleset to require the central review workflow on every repository that matches a pattern.</li><li>Review quality quarterly against a fixed set of pull requests before changing the model or the instructions.</li></ul></div></div>
+</div></section>
+
+<section class="block"><div class="wrap">
+  <p class="kicker">Turn it on</p>
+  <h2>Three things per organisation, one file per repository</h2>
+  <div class="grid3">
+    <div class="card"><span class="tag t-blue">1 · Variables</span><h4>Where the gateway and MCP servers are</h4><p>Organisation-level Actions variables, shared by every repository. No secrets: the identity comes from the runner.</p></div>
+    <div class="card"><span class="tag t-purple">2 · Workflow</span><h4>The review job</h4><p>One small workflow. Copy it into each repository, or keep one central copy and require it with an organisation ruleset.</p></div>
+    <div class="card"><span class="tag t-green">3 · Rules</span><h4>Required status and approval</h4><p>Require <code>ai-review/foundry</code> and one human approval on <code>main</code>. Start in <i>Evaluate</i> mode to see the impact before you enforce.</p></div>
+  </div>
+  <div class="code"><span class="lbl">Organisation variables</span><button class="copy" type="button">Copy</button><pre># Organisation variables (Settings &gt; Secrets and variables &gt; Actions &gt; Variables). None of these is a secret.
+AI_ENDPOINT        = https://apim-&lt;name&gt;.azure-api.net/openai/v1
+MODEL_DEPLOYMENT   = gpt-review
+MCP_GITHUB_URL     = http://10.40.4.10:8082/mcp
+MCP_STANDARDS_URL  = http://10.40.4.10:8080/mcp</pre></div>
+  <div class="code"><span class="lbl">Workflow</span><button class="copy" type="button">Copy</button><pre># .github/workflows/ai-review.yml  (same file in every repository, or one central copy required by a ruleset)
+name: AI review
+on:
+  pull_request_target:            # workflow definition comes from the base branch, not from the PR
+    types: [opened, synchronize, reopened, ready_for_review]
+permissions:
+  contents: read
+  pull-requests: write            # post the review
+  statuses: write                 # ai-review/foundry commit status
+jobs:
+  review:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ai-review-runners    # your self-hosted runners with a managed identity
+    timeout-minutes: 15
+    steps:
+      - name: Review with Microsoft Foundry + MCP
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}      # short-lived job token, nothing stored
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          AI_ENDPOINT: ${{ vars.AI_ENDPOINT }}            # API Management AI gateway, private IP
+          MODEL_DEPLOYMENT: ${{ vars.MODEL_DEPLOYMENT }}
+          MCP_GITHUB_URL: ${{ vars.MCP_GITHUB_URL }}
+          MCP_STANDARDS_URL: ${{ vars.MCP_STANDARDS_URL }}
+        run: /opt/reviewer/.venv/bin/python /opt/reviewer/review.py</pre></div>
+  <div class="prod"><b>At scale, use an organisation ruleset.</b> On GHES 3.22 an organisation owner can create a branch ruleset that targets repositories by name pattern and adds <i>Require workflows to pass before merging</i>, pointing at the review workflow in a central repository. New repositories are covered the day they are created.</div>
+</div></section>
+
+<section class="block"><div class="wrap">
+  <p class="kicker">Make it yours</p>
+  <h2>Tune the reviewer with your own standards</h2>
+  <p class="sub">The model is the same for everyone. What makes the reviews useful is what it is told to check. Write your rules as short Markdown sections with an ID, a reason and a severity, and serve them through the standards MCP server. The reviewer is instructed to search them and cite the rule ID in every comment.</p>
+  <div class="code"><span class="lbl">standards/secure-coding.md (excerpt)</span><button class="copy" type="button">Copy</button><pre>### CSG-SQL-01 Parameterized queries only
+Never build SQL text with string formatting, f-strings, `%` or `+` concatenation, even for &quot;internal&quot; values.
+Use driver parameters: `cur.execute(&quot;SELECT ... WHERE customer = ?&quot;, (customer,))`.
+Severity when violated: critical (SQL injection, OWASP A03).</pre></div>
+  <div class="grid3">
+    <div class="card"><h4>Reviewer instructions</h4><p>Tone, focus and severity policy live in <code>runner/reviewer/instructions.md</code>, versioned and reviewed like code.</p></div>
+    <div class="card"><h4>Severity threshold</h4><p>Only critical and high findings fail the status. Medium and low stay as advice so developers aren't blocked by style.</p></div>
+    <div class="card"><h4>Diff and tool budgets</h4><p>Caps on diff size, model turns and tool calls keep reviews fast and costs predictable.</p></div>
+  </div>
+</div></section>
+
+<section class="block"><div class="wrap">
+  <p class="kicker">Security review</p>
+  <h2>Questions your security team will ask</h2>
+  <table><thead><tr><th style="width:34%">Risk</th><th>How the design handles it</th></tr></thead><tbody><tr><td><b>A pull request tries to talk the reviewer into approving (prompt injection)</b></td><td>The diff and description are framed as untrusted data; tools are read-only; the answer must match a strict JSON schema; findings must point at changed lines; the reviewer can only comment, never merge. The demo PR contains exactly this attack.</td></tr><tr><td><b>A pull request changes the review workflow to leak tokens</b></td><td><code>pull_request_target</code> runs the workflow from the base branch. The job never checks out or executes pull request code; it reads the diff through the API.</td></tr><tr><td><b>Source code leaves the network</b></td><td>Runners, MCP servers, the gateway and Foundry are all on private IPs. Foundry has public network access disabled and is reached through a private endpoint.</td></tr><tr><td><b>Stolen or long-lived credentials</b></td><td>There are none to steal: runner pods get Entra ID tokens through workload identity, API Management uses its managed identity, the GitHub token lives only for the job.</td></tr><tr><td><b>Runaway cost</b></td><td>API Management <code>llm-token-limit</code> per repository, diff size limits, a cap on model turns and tool calls, and runners that scale to zero.</td></tr><tr><td><b>Model data use</b></td><td>Prompts and completions sent to Azure Direct Models in Foundry are not used to train foundation models and are not available to OpenAI or other customers.</td></tr></tbody></table>
+</div></section>
+
+<section class="block"><div class="wrap">
+  <p class="kicker">Options</p>
+  <h2>How this fits with other GitHub AI features</h2>
+  <div class="grid2"><div class="card"><span class="tag t-red">Not on GHES today</span><h4>Copilot code review</h4><p>Available on GitHub.com and GHE.com. If you move to GHE.com with data residency later, the pipeline in this guide can stay as a second reviewer for your own standards, or be retired.</p></div><div class="card"><span class="tag t-orange">Complements this</span><h4>Copilot in the IDE and Copilot CLI</h4><p>Developers review their own changes before they open a pull request. GHES 3.22 adds a Copilot CLI setup with an administrator-configured model provider (technical preview).</p></div><div class="card"><span class="tag t-purple">Pilot first</span><h4>GitHub Agentic Workflows</h4><p>Agentic workflows with safe outputs, MCP allow-lists and Azure OpenAI through bring-your-own key or Entra ID. Check GHES compatibility for your version before you plan on it.</p></div><div class="card"><span class="tag t-green">Production ready</span><h4>This pattern</h4><p>A plain Actions workflow you own end to end: your runners, your network, your model deployment, your rules. Deterministic posting and a required status check.</p></div></div>
+</div></section>
+
+<section class="block"><div class="wrap">
+  <p class="kicker">FAQ</p>
+  <h2>Common questions</h2>
+  <details class="faq"><summary>Does our source code leave our network?</summary><p>The changed lines, the pull request description and any file excerpts the model asks for through MCP are sent to your own Foundry deployment over a private endpoint. Nothing goes to a public endpoint, and nothing is stored by the reviewer. Pick a Foundry region and deployment type that match your residency rules.</p></details><details class="faq"><summary>Can the AI block a merge?</summary><p>Only if you want it to. The reviewer sets a commit status; your branch rules decide whether it is required. We recommend advisory mode during the pilot, then requiring it only for critical and high findings, with a human approval on top.</p></details><details class="faq"><summary>Which languages does it support?</summary><p>Any language the model reads well. The quality comes from your standards: write them as short rules with IDs and examples, and the reviewer will cite them.</p></details><details class="faq"><summary>How long does a review take?</summary><p>Seconds to a few minutes, depending on the size of the diff and how many tool calls the model makes. Model turns and tool calls are capped so a review always ends.</p></details><details class="faq"><summary>What does it cost?</summary><p>Mostly model tokens, plus the fixed cost of API Management, the runners and the MCP VM. Every review reports its own token count in the pull request, so you can multiply by your model's price and set budgets per repository in the gateway.</p></details><details class="faq"><summary>What if the model or the gateway is down?</summary><p>The workflow reports an <i>error</i> status instead of failing silently, and the gateway retries on throttling. The code is never changed by the reviewer, so a failed review only means a human reviews without AI help.</p></details><details class="faq"><summary>Can we use a different model?</summary><p>Yes. Change the deployment behind the gateway; the workflow does not change. Evaluate on a fixed set of past pull requests before you switch.</p></details>
+</div></section>
+
+<footer><div class="wrap">
+  <p><b>Sources</b> (checked 7 November 2026)</p>
+  <ol>
+    <li><a href="https://docs.github.com/copilot/concepts/agents/code-review">GitHub Docs — GitHub Copilot code review</a></li>
+    <li><a href="https://docs.github.com/en/enterprise-server@3.22/organizations/managing-organization-settings/creating-rulesets-for-repositories-in-your-organization">GitHub Docs (GHES 3.22) — Creating rulesets for repositories in your organization</a></li>
+    <li><a href="https://docs.github.com/en/enterprise-server@3.22/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets">GitHub Docs (GHES 3.22) — Available rules for rulesets</a></li>
+    <li><a href="https://docs.github.com/en/enterprise-server@3.22/copilot/copilot-on-ghes/set-up-copilot-cli">GitHub Docs (GHES 3.22) — Set up GitHub Copilot CLI for GitHub Enterprise Server</a></li>
+    <li><a href="https://github.com/github/github-mcp-server/blob/main/README.md">github-mcp-server — README (GitHub Enterprise Server)</a></li>
+    <li><a href="https://learn.microsoft.com/en-us/azure/foundry/responsible-ai/openai/data-privacy">Microsoft Learn — Data, privacy, and security for Azure Direct Models in Microsoft Foundry</a></li>
+    <li><a href="https://learn.microsoft.com/en-us/azure/api-management/llm-token-limit-policy">Microsoft Learn — API Management llm-token-limit policy</a></li>
+    <li><a href="https://github.github.com/gh-aw/reference/enterprise-configuration/">GitHub Agentic Workflows — Enterprise configuration</a></li>
+  </ol>
+  <p>Contoso is a fictitious company. Lab sample, not an official Microsoft or GitHub product.</p>
+</div></footer>
+<script src="assets/site.js"></script>
+</body></html>

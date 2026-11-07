@@ -23,18 +23,34 @@ git clone https://github.com/ibranibeny/contoso-ghes-ai-review-lab.git && cd con
 bash 00-preflight.sh                                  # providers, VM sizes, GHES image, models + quota in East US
 MODEL_NAME=gpt-5.6-terra MODEL_VERSION=2026-07-09 PRESENTER_IP=<your-ip> bash 01-deploy-infra.sh
 bash 02-wait-infra.sh                                 # 45-60 minutes: VPN gateways and API Management
-bash 10-ghes-init.sh ~/ghes-trial.ghl                 # license, root password, host name, apply
-bash 11-ghes-tls-actions.sh                           # Let's Encrypt + Actions on Azure Blob
-bash 12-ghes-bootstrap.sh                             # org, repo, variables, required status check
+bash 05-admin-workstation.sh                          # private admin workstation (no public IP) + lab CA, step 06
+source lib/ws.sh                                      # ws '<cmd>' runs on the workstation through Azure Run Command
+ws 'bash 10-ghes-init.sh'                             # license, root password, host name, admin SSH key, apply
+ws 'bash 11-ghes-tls-actions.sh'                      # lab CA + certificate, Actions on Azure Blob (private endpoint)
+ws '/opt/lab/venv/bin/python 12-first-admin.py'       # first site admin + automation token (headless Chromium)
+ws 'bash 13-ghes-bootstrap.sh'                        # org, repo, variables, required status check
 bash 20-runner-image.sh && bash 21-arc-install.sh     # runner image in ACR, ARC on private AKS
 bash 30-mcp-check.sh                                  # MCP servers up, GHES reachable over the VPN
-bash 40-demo-pr.sh                                    # open the demo PR and watch the AI review
+ws 'bash 40-demo-pr.sh'                               # open the demo PR and watch the AI review
+ws 'bash 41-demo-fix.sh'                              # the developer answers the review (repeat with pr-demo-fix2, -fix3)
+ws 'bash 42-demo-collect.sh after && bash lib/publish-media.sh shots'   # evidence for the docs site
 bash 99-cleanup.sh                                    # delete everything
 ```
 
 You need a GHES license: request a 45-day trial at https://enterprise.github.com/trial (choose *Deploy GitHub on Microsoft Azure*) and download the `.ghl` file to Cloud Shell.
 
-Cloud Shell without a storage account starts every session with an empty home folder. The scripts back up their state (generated secrets, SSH key, tokens) to the lab Key Vault and restore it automatically; run them with `bash` as shown.
+Cloud Shell without a storage account starts every session with an empty home folder. The lab keeps its state in `~/.ghes-lab` and a copy on the admin workstation; in a new session run `bash 06-workstation-sync.sh --pull`.
+
+### What happened in our run (7 November 2026)
+
+| Commit on PR #1 | `ai-review/foundry` |
+|---|---|
+| `acfa0ac` Add year-end discount codes | failure: 6 blocking, 8 total findings |
+| `a8d8979` first answer to the review | failure: 2 blocking, 5 total findings |
+| `adad8c5` second answer | failure: 1 blocking, 2 total findings |
+| `e8cf8f5` third answer | **success**: 0 blocking, 1 total finding |
+
+Each review took 22 to 29 seconds on a fresh runner pod and about 27,000 tokens. Details, screenshots and the job logs are on the [demo page](https://ibranibeny.github.io/contoso-ghes-ai-review-lab/demo.html).
 
 ## Repository layout
 
@@ -49,8 +65,9 @@ Cloud Shell without a storage account starts every session with an empty home fo
 
 ## Lab shortcuts (not for production)
 
-- GHES has a public IP allow-listed to the presenter and Cloud Shell, and uses a `cloudapp.azure.com` name with
-  subdomain isolation off. Production: no public IP, a corporate domain, subdomain isolation on.
+- GHES keeps a public IP for outbound traffic only; administration happens from the private workstation (the tenant
+  removed the allow-listed admin rule we started with). It uses a `cloudapp.azure.com` name with subdomain isolation
+  off and a lab CA. Production: no public IP, a corporate domain and PKI, subdomain isolation on.
 - Actions storage uses a connection string. Production: OpenID Connect to Azure Blob.
 - API Management is the Developer tier (no SLA); Foundry uses one Global Standard deployment.
 - The VPN replaces ExpressRoute; one gateway per site, no active-active.
