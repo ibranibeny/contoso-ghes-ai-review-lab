@@ -11,6 +11,8 @@ git add -A && git -c user.name="$GHES_ADMIN" -c user.email="$GHES_ADMIN_EMAIL" c
 cd - >/dev/null || exit 1
 PR=$(ghes_api POST "/repos/$O/$R/pulls" "{\"title\":\"Add year-end discount codes\",\"head\":\"$B\",\"base\":\"main\",\"body\":\"Adds discount codes for the year-end campaign and notifies the campaign webhook.\"}" | jq -r .number)
 echo "Opened PR #$PR: https://$GHES_HOST/$O/$R/pull/$PR"
+# the pull request as the developer sees it, before the AI review lands
+/opt/lab/venv/bin/python lib/shots.py "40-01-pr-opened=/$O/$R/pull/$PR" "40-02-pr-diff=/$O/$R/pull/$PR/files" | sed 's/^/  /' || true
 for i in $(seq 1 40); do
   S=$(ghes_api GET "/repos/$O/$R/commits/$B/status" | jq -r '.statuses[]? | select(.context=="ai-review/foundry") | "\(.state): \(.description)"' | head -1)
   echo "$(date +%H:%M:%S) ai-review/foundry -> ${S:-waiting for runner}"

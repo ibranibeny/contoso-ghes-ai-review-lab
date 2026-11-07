@@ -8,4 +8,4 @@ AAD=$(curl -s -H Metadata:true "http://169.254.169.254/metadata/identity/oauth2/
 RT=$(curl -s -X POST "https://$REG/oauth2/exchange" --data-urlencode grant_type=access_token \
       --data-urlencode "service=$REG" --data-urlencode "access_token=$AAD" | jq -r .refresh_token)
 echo "$RT" | oras login "$REG" -u 00000000-0000-0000-0000-000000000000 --password-stdin >/dev/null
-cd /opt/lab/shots && oras push "$REG/lab-media:$TAG" --artifact-type application/vnd.contoso.lab.media ./*.png | tail -2
+cd /opt/lab/shots && oras push "$REG/lab-media:$TAG" --artifact-type application/vnd.contoso.lab.media $(ls *.png *.json *.txt 2>/dev/null) | tail -2
