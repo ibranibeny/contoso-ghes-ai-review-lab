@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Workshop — AI code review for GitHub Enterprise Server</title><meta name="description" content="Step-by-step workshop: GHES on Azure, private runners, MCP servers, API Management and Microsoft Foundry.">
+<link rel="stylesheet" href="assets/site.css"></head>
+<body>
+<header class="top"><div class="wrap">
+  <a class="brand" href="index.html"><span class="logo">AI</span>AI code review for GHES</a>
+  <nav class="nav"><a href="index.html">Overview</a><a href="demo.html">Demo</a><a href="apply.html">Adopt</a><a href="guide.html" class=on>Workshop</a><a href="index.html#architecture">Architecture</a><a href="studio/index.html">Agent studio</a><a href="https://github.com/ibranibeny/contoso-ghes-ai-review-lab" class=cta>GitHub repo</a></nav>
+</div></header>
+
+<div class="wrap"><div class="layout">
+<aside class="toc"><b>Workshop</b><a href="#m0">0. Before you start</a><a href="#m1">1. Pre-flight</a><a href="#m2">2. Deploy three regions</a><a href="#m3">3. GHES trial license</a><a href="#m4">4. Private administration</a><a href="#m5">5. Initialise GHES</a><a href="#m6">6. TLS + Actions</a><a href="#m7">7. First admin + token</a><a href="#m8">8. Org, repo, guardrails</a><a href="#m9">9. Private runners</a><a href="#m10">10. MCP servers</a><a href="#m11">11. AI gateway + model</a><a href="#m12">12. Demo PR</a><a href="#m13">13. Screenshots + video</a><a href="#m14">14. Clean up</a></aside>
+<main>
+  <p class="kicker" style="margin-top:6px">Workshop guide</p>
+  <h1 style="font-size:38px;line-height:1.15;margin:0 0 10px">Build AI code review for GHES, step by step</h1>
+  <p class="sub">These are the steps, commands and outputs from our own run on 7 November 2026, with secrets removed. Each module says what it does, why it matters, and how to check it in the Azure portal.</p>
+  <div class="module" id="m0"><div class="mhead"><div class="mnum">0</div><div><h2>Before you start</h2><div class="meta"><span class="pill">5 minutes</span><span class="pill">Azure Cloud Shell</span></div></div></div>
+<p>You need an Azure subscription where you can create resource groups and role assignments (Owner, or Contributor plus User Access Administrator), quota for about 20 vCPUs across Indonesia Central and Southeast Asia, and access to a chat model in East US. Everything runs from <b>Azure Cloud Shell (Bash)</b>; nothing is installed on your laptop.</p>
+<table><thead><tr><th>Item</th><th>What we used</th><th>Why</th></tr></thead><tbody>
+<tr><td>GitHub Enterprise Server</td><td>3.22.3, 45-day trial license, Azure Marketplace image</td><td>The "on-premises" source of truth. Trial requested at enterprise.github.com/trial.</td></tr>
+<tr><td>Simulated data centre</td><td>Indonesia Central, VNet 10.30.0.0/16</td><td>Stands in for the customer's site. Joined to Azure by a site-to-site VPN.</td></tr>
+<tr><td>Azure landing zone</td><td>Southeast Asia, VNet 10.40.0.0/16</td><td>Private AKS (runners), MCP VM, API Management, Key Vault, ACR.</td></tr>
+<tr><td>Model</td><td>Microsoft Foundry, East US, <code>gpt-5.6-terra</code> (Global Standard)</td><td>Balanced tier for coding and tool use; its own quota was free in this subscription.</td></tr>
+</tbody></table>
+<div class="code"><span class="lbl">Cloud Shell</span><button class="copy" type="button">Copy</button><pre>git clone https://github.com/ibranibeny/contoso-ghes-ai-review-lab.git
+cd contoso-ghes-ai-review-lab/scripts</pre></div>
+<div class="note"><b>Cloud Shell tip.</b> Without a storage account, every Cloud Shell session starts with an empty home folder. The lab keeps its state (generated passwords, SSH key, certificates, token) in <code>~/.ghes-lab</code> and a copy on the private admin workstation; in a fresh session, <code>bash 06-workstation-sync.sh --pull</code> brings it back. Run scripts with <code>bash</code>, as shown, so they work on any mount.</div>
+</div><div class="module" id="m1"><div class="mhead"><div class="mnum">1</div><div><h2>Pre-flight checks</h2><div class="meta"><span class="pill">2 minutes</span><span class="pill">00-preflight.sh</span></div></div></div>
+<p>Before deploying anything, check that the resource providers are registered, the VM sizes are offered in each region, the GHES image exists in Indonesia Central, and which models you can deploy in East US with the quota you have.</p>
+<div class="code"><span class="lbl">Cloud Shell</span><button class="copy" type="button">Copy</button><pre>bash 00-preflight.sh</pre></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i>&nbsp;Azure Cloud Shell · Bash</div><pre>Azure CLI : 2.90.0
+Bicep     : Bicep CLI version 0.48.1 (cec7951cf6)
+Provider  : Microsoft.Network = Registered
+Provider  : Microsoft.Compute = Registered
+Provider  : Microsoft.ContainerService = Registered
+Provider  : Microsoft.CognitiveServices = Registered
+Provider  : Microsoft.ApiManagement = Registered
+VM size   : Standard_E8s_v5 in indonesiacentral = <span class="ok">available</span>
+VM size   : Standard_D4s_v5 in southeastasia = <span class="ok">available</span>
+VM size   : Standard_D2s_v5 in southeastasia = <span class="ok">available</span>
+Quota     : indonesiacentral ESv5 family 0/100 vCPU used/limit
+Quota     : southeastasia DSv5 family 2/100 vCPU used/limit
+GHES image: GitHub:GitHub-Enterprise:github-enterprise-gen2:3.22.3
+Models    : (East US, GlobalStandard)
+gpt-5.4        2026-03-05  GenerallyAvailable
+gpt-5.5        2026-04-24  GenerallyAvailable
+gpt-5.6-luna   2026-07-09  GenerallyAvailable
+gpt-5.6-sol    2026-07-09  GenerallyAvailable
+<span class="ok">gpt-5.6-terra</span>  2026-07-09  GenerallyAvailable
+Quota     : (East US, GlobalStandard tokens-per-minute, in thousands)
+OpenAI.GlobalStandard.gpt-5           <span class="warn">582.0/250.0</span>
+OpenAI.GlobalStandard.gpt-5.6-luna      0.0/250.0
+OpenAI.GlobalStandard.gpt-5.6-sol      50.0/250.0
+OpenAI.GlobalStandard.<span class="ok">gpt-5.6-terra</span>     0.0/250.0</pre></div>
+<div class="why"><b>What we decided from this.</b> The shared <code>gpt-5</code> quota was already over its limit (582 of 250), but every GPT-5.6 tier has its own quota. We chose <b>gpt-5.6-terra</b>: strong on code and tool calling at a fraction of the flagship's cost (Well-Architected cost pillar). Move up to <code>gpt-5.6-sol</code> only if your own evaluation shows a quality gap.</div>
+</div><div class="module" id="m2"><div class="mhead"><div class="mnum">2</div><div><h2>Deploy three regions with Bicep</h2><div class="meta"><span class="pill">45–60 minutes (runs in Azure)</span><span class="pill">01-deploy-infra.sh</span><span class="pill">Azure portal</span></div></div></div>
+<p>One subscription-scope Bicep deployment creates three resource groups and everything in them. The script builds the template, runs a full pre-deployment validation, and starts the deployment with <code>--no-wait</code>, so you can close Cloud Shell.</p>
+<div class="code"><span class="lbl">Cloud Shell</span><button class="copy" type="button">Copy</button><pre>MODEL_NAME=gpt-5.6-terra MODEL_VERSION=2026-07-09 PRESENTER_IP=&lt;your-browser-ip&gt; bash 01-deploy-infra.sh</pre></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i>&nbsp;Azure Cloud Shell · Bash</div><pre>$ MODEL_NAME=gpt-5.6-terra MODEL_VERSION=2026-07-09 PRESENTER_IP=&lt;your-ip&gt; bash 01-deploy-infra.sh
+Subscription : ME-MngEnvMCAP708029-benyibrani-1
+Deployment   : ghes-ai-lab  |  rg-ghes-onprem-idc (indonesiacentral)  |  rg-ghes-ai-sea (southeastasia)  |  rg-ghes-foundry-eus (eastus)
+<span class="ok">Bicep build: OK</span>
+<span class="ok">Succeeded</span>
+--- deploy (runs in Azure; safe to close Cloud Shell) ---</pre></div>
+<div class="portal"><b>Azure portal:</b> Subscriptions → your subscription → <b>Deployments</b> → <code>ghes-ai-lab</code>. Each module (on-prem site, landing zone, Foundry, DNS links, VPN gateways, API Management) shows its own status.</div>
+<figure class="shot"><img src="assets/img/02-portal-deployment-running.png" alt="The deployment in the Azure portal. The GHES site, landing zone, Foundry and DNS links finish first; the two VPN gateways and API Management take the longest." loading="lazy"><figcaption>The deployment in the Azure portal. The GHES site, landing zone, Foundry and DNS links finish first; the two VPN gateways and API Management take the longest.</figcaption></figure>
+<table><thead><tr><th>Module</th><th>Creates</th><th>Typical time</th></tr></thead><tbody>
+<tr><td><code>onprem-site</code></td><td>VNet, NSG allow-list, GHES VM (E8s_v5, 512 GB data disk), Actions storage with private endpoint</td><td>5–8 min</td></tr>
+<tr><td><code>azure-landing-zone</code></td><td>Private AKS with workload identity, MCP VM, NAT gateway, Key Vault, ACR, identities, private endpoint to Foundry</td><td>10–15 min</td></tr>
+<tr><td><code>foundry</code></td><td>AI Services account (local auth off), project, model deployment</td><td>2–4 min</td></tr>
+<tr><td><code>vpn-onprem-idc</code>, <code>vpn-ai-sea</code></td><td>VpnGw1AZ gateways, local network gateways, IKEv2 connections</td><td>30–45 min</td></tr>
+<tr><td><code>apim-ai-gateway</code></td><td>API Management (Developer, internal VNet) with the AI gateway policy</td><td>30–60 min</td></tr>
+</tbody></table>
+<figure class="shot"><img src="assets/img/22-portal-landing-zone.png" alt="Azure portal, &lt;code&gt;rg-ghes-ai-sea&lt;/code&gt; after the deployment: 35 resources, including the container registry, the private AKS cluster, API Management, Application Insights and the VPN connection." loading="lazy"><figcaption>Azure portal, <code>rg-ghes-ai-sea</code> after the deployment: 35 resources, including the container registry, the private AKS cluster, API Management, Application Insights and the VPN connection.</figcaption></figure><figure class="shot"><img src="assets/img/23-portal-vpn-connected.png" alt="The site-to-site connection &lt;code&gt;cn-ai-sea-s2s&lt;/code&gt; is &lt;b&gt;Connected&lt;/b&gt;; traffic is already flowing between the data centre and the landing zone. Subscription details and the peer address are blurred." loading="lazy"><figcaption>The site-to-site connection <code>cn-ai-sea-s2s</code> is <b>Connected</b>; traffic is already flowing between the data centre and the landing zone. Subscription details and the peer address are blurred.</figcaption></figure>
+<div class="note"><b>What happened next.</b> The template also opened the appliance's management ports to two allow-listed IP addresses, as a lab shortcut. Within minutes the Contoso tenant's own guardrail removed that rule. Module 4 shows the design we moved to, which is also what we recommend for production.</div>
+</div><div class="module" id="m3"><div class="mhead"><div class="mnum">3</div><div><h2>Get a GHES trial license</h2><div class="meta"><span class="pill">5 minutes</span><span class="pill">enterprise.github.com/trial</span></div></div></div>
+<p>Sign in to github.com, open <a href="https://enterprise.github.com/trial">enterprise.github.com/trial</a>, fill in your details and choose <b>Deploy GitHub on Microsoft Azure</b>. You (not a script) accept the GitHub Customer Agreement on behalf of your organisation. The confirmation page offers the license file straight away.</p>
+<figure class="shot"><img src="assets/img/03-ghes-trial-confirmed.png" alt="Trial confirmed. Use “Download your license” to get the &lt;code&gt;.ghl&lt;/code&gt; file. We fetched it directly into Cloud Shell from the same link." loading="lazy"><figcaption>Trial confirmed. Use “Download your license” to get the <code>.ghl</code> file. We fetched it directly into Cloud Shell from the same link.</figcaption></figure>
+<div class="code"><span class="lbl">Cloud Shell</span><button class="copy" type="button">Copy</button><pre>curl -sSL -o ~/ghes-trial.ghl &#x27;&lt;the Download your license link&gt;&#x27;   # or upload the file with Manage files &gt; Upload
+chmod 600 ~/ghes-trial.ghl</pre></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i>&nbsp;Azure Cloud Shell · Bash</div><pre>-rw------- 1 bibrani bibrani 20161 Nov  7 05:10 /home/bibrani/ghes-trial.ghl
+GHES host: ghes-contoso-spn236.indonesiacentral.cloudapp.azure.com
+privateIp: 10.30.1.10
+size: Standard_E8s_v5
+state: <span class="ok">VM running</span>
+Setup page :8443 -&gt; <span class="ok">HTTP 200</span></pre></div>
+</div><div class="module" id="m4"><div class="mhead"><div class="mnum">4</div><div><h2>Private administration: no inbound ports</h2><div class="meta"><span class="pill">10 minutes</span><span class="pill">05-admin-workstation.sh</span><span class="pill">06-workstation-sync.sh</span><span class="pill">Azure portal</span></div></div></div>
+<p>Shortly after the deployment, the appliance stopped answering on its management ports. The activity log showed why: a tenant guardrail (an automated identity, not us) had rewritten <code>nsg-ghes</code> and removed the rule that allowed the management console (8443) and administrative SSH (122) from two public IP addresses. Rather than fight the control, we adopted the design it pushes you towards:</p>
+<ul>
+<li>A small <b>admin workstation</b> (<code>vm-corp-ws01</code>, Ubuntu 24.04) in its own subnet of the data centre network, with <b>no public IP</b> and only the Azure default inbound rules.</li>
+<li>Outbound internet for that subnet through a <b>NAT gateway</b>, so the workstation can fetch packages and the lab repository.</li>
+<li>One NSG rule on the appliance: 8443 and 122 are reachable <b>from the workstation subnet only</b>.</li>
+<li>Cloud Shell drives the workstation with <b>Azure Run Command</b> (the Azure control plane), so nobody needs SSH or RDP into it.</li>
+</ul>
+<div class="code"><span class="lbl">Cloud Shell</span><button class="copy" type="button">Copy</button><pre>bash 05-admin-workstation.sh      # NAT gateway, subnet + NSG, VM, cloud-init, then step 06
+source lib/ws.sh                   # ws &#x27;&lt;commands&gt;&#x27; runs on the workstation as root, in bash</pre></div>
+<figure class="shot"><img src="assets/img/05-workstation-ready.png" alt="The workstation is ready: cloud-init installed the tools and headless Chromium, step 06 created the Contoso lab CA and the appliance certificate, and copied the lab settings and secrets to &lt;code&gt;/root/.ghes-lab&lt;/code&gt;." loading="lazy"><figcaption>The workstation is ready: cloud-init installed the tools and headless Chromium, step 06 created the Contoso lab CA and the appliance certificate, and copied the lab settings and secrets to <code>/root/.ghes-lab</code>.</figcaption></figure>
+<figure class="shot"><img src="assets/img/07-portal-nsg-private-only.png" alt="Azure portal, &lt;code&gt;nsg-ghes&lt;/code&gt;: web and Git (443, 22) from the virtual networks, administration (8443, 122) from the workstation subnet only. Nothing is open to the internet." loading="lazy"><figcaption>Azure portal, <code>nsg-ghes</code>: web and Git (443, 22) from the virtual networks, administration (8443, 122) from the workstation subnet only. Nothing is open to the internet.</figcaption></figure>
+<div class="why"><b>Why this is the right default.</b> Management planes are high-value targets. Keeping them reachable only from inside the network, with control-plane access audited in the Azure activity log, follows the Well-Architected security pillar and is what most regulated customers already require.</div>
+</div><div class="module" id="m5"><div class="mhead"><div class="mnum">5</div><div><h2>Initialise the appliance through its API</h2><div class="meta"><span class="pill">15–20 minutes</span><span class="pill">10-ghes-init.sh</span><span class="pill">Management Console API</span></div></div></div>
+<p>Instead of clicking through the setup wizard, the script uses the GHES <b>Management Console API</b> on port 8443: upload the license and set the root site administrator password, set the host name and private mode, register an SSH key for the administrative shell (port 122), then apply the configuration. In our run the first configuration took about 25 minutes.</p>
+<div class="code"><span class="lbl">Cloud Shell</span><button class="copy" type="button">Copy</button><pre>ws &#x27;bash 10-ghes-init.sh&#x27;   # from Cloud Shell; step 06 copied the license to the workstation</pre></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i>&nbsp;Azure Cloud Shell · Bash</div><pre>Allow-list now: &lt;presenter-ip&gt;/32 &lt;cloud-shell-ip&gt;/32
+Waiting for the appliance to answer on :8443 ...
+--- upload license + set root site admin password
+<span class="ok">HTTP 202</span>
+--- settings: host name, private mode, no public sign-up
+<span class="ok">HTTP 204</span>
+--- administrative SSH key (port 122)
+[{&quot;hostname&quot;:&quot;localhost&quot;,&quot;message&quot;:&quot;<span class="ok">SSH key added successfully</span>&quot;,&quot;modified&quot;:true}]
+HTTP 200
+--- apply configuration (10-20 minutes the first time)
+run_id=895c776e
+05:20:12 {&quot;running&quot;:true,&quot;successful&quot;:false,&quot;nodes&quot;:[null]}
+05:20:43 {&quot;running&quot;:true,&quot;successful&quot;:false,&quot;nodes&quot;:[null]}
+...</pre></div>
+<figure class="shot"><img src="assets/img/06-ghes-ready-from-workstation.png" alt="From the workstation: the GHES host name resolves to its private address (10.30.1.10) through the split-horizon private DNS zone, the configuration run finished successfully, and the API reports version 3.22.3." loading="lazy"><figcaption>From the workstation: the GHES host name resolves to its private address (10.30.1.10) through the split-horizon private DNS zone, the configuration run finished successfully, and the API reports version 3.22.3.</figcaption></figure>
+
+</div><div class="module" id="m6"><div class="mhead"><div class="mnum">6</div><div><h2>TLS from your PKI, and GitHub Actions</h2><div class="meta"><span class="pill">15–25 minutes</span><span class="pill">11-ghes-tls-actions.sh</span></div></div></div>
+<p>GitHub Actions on GHES needs TLS and external blob storage. With no internet-facing port 80, a public ACME certificate is not an option, and most enterprises use their own PKI anyway. Step 06 created a <b>Contoso lab CA</b> and a certificate for the appliance's host name. Step 11 makes the appliance trust that CA (<code>ghe-ssl-ca-certificate-install</code>), installs the certificate through the Management Console API, tests the Actions storage account through its <b>private endpoint</b> with <code>ghe-actions-precheck</code>, stores the Actions settings and applies everything in one configuration run.</p>
+<div class="code"><span class="lbl">Cloud Shell</span><button class="copy" type="button">Copy</button><pre>ws &#x27;setsid nohup bash 11-ghes-tls-actions.sh &gt; /var/log/lab-11.log 2&gt;&amp;1 &lt; /dev/null &amp;&#x27;
+ws &#x27;tail /var/log/lab-11.log&#x27;</pre></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i>&nbsp;Admin workstation · ws &#x27;tail /var/log/lab-11.log&#x27;</div><pre>--- appliance reachable from the workstation (private DNS: 10.30.1.10)
+--- TLS: trust the Contoso lab CA on the appliance, then install the certificate issued by it for ghes-contoso-spn236.indonesiacentral.cloudapp.azure.com
+<span class="ok">settings: HTTP 204</span>
+--- GitHub Actions storage: Azure Blob through the private endpoint
+<span class="ok">All Storage tests passed</span>
+    Actions settings stored
+--- apply (TLS + Actions)
+run_id=1727b03c
+06:19:39 {&quot;running&quot;:true,&quot;successful&quot;:false}
+...
+Artifactcache nomad job is healthy!
+Artifactcache AT health api is healthy!
+<span class="ok">STEP 11 DONE</span></pre></div>
+<div class="note"><b>Lesson learned.</b> Our first attempt to install the certificate failed with <i>“The certificate is not signed by a trusted certificate authority”</i>. GHES validates the chain, so the CA must be installed on the appliance first. The script now does that.</div>
+<div class="prod"><b>Everything that talks to GHES must trust the same CA:</b> the runner image (system store plus <code>NODE_EXTRA_CA_CERTS</code>, <code>SSL_CERT_FILE</code>, <code>REQUESTS_CA_BUNDLE</code>), the ARC listener (<code>githubServerTLS</code>) and GitHub's MCP server (the host bundle mounted read-only). Steps 20, 21 and 30 handle each one.</div>
+</div><div class="module" id="m7"><div class="mhead"><div class="mnum">7</div><div><h2>First administrator and automation token</h2><div class="meta"><span class="pill">3 minutes</span><span class="pill">12-first-admin.py</span></div></div></div>
+<p>GHES has no API for the very first user, so step 12 drives the web UI from the workstation with headless Chromium (Playwright): it creates the first site administrator, signs in, and creates a personal access token (classic) for the lab automation with the <code>repo</code>, <code>workflow</code>, <code>admin:org</code> and <code>site_admin</code> scopes. The token stays in <code>/root/.ghes-lab</code> on the workstation.</p>
+<div class="code"><span class="lbl">Cloud Shell</span><button class="copy" type="button">Copy</button><pre>ws &#x27;/opt/lab/venv/bin/python 12-first-admin.py&#x27;</pre></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i>&nbsp;Admin workstation · 12-first-admin.py</div><pre>first administrator created: ibranibeny
+signed in -&gt; https://ghes-contoso-spn236.indonesiacentral.cloudapp.azure.com/
+screenshot 12-02-ghes-dashboard
+screenshot 12-03-token-scopes
+token saved to /root/.ghes-lab/ghes-token ( ghp_... )
+<span class="ok">STEP 12 DONE</span></pre></div><figure class="shot"><img src="assets/img/ghes/12-01-create-first-admin.png" alt="The appliance&#x27;s first-run page: the script fills in the first site administrator." loading="lazy"><figcaption>The appliance's first-run page: the script fills in the first site administrator.</figcaption></figure><figure class="shot"><img src="assets/img/ghes/12-02-ghes-dashboard.png" alt="Signed in to GHES 3.22.3 for the first time, from the private workstation." loading="lazy"><figcaption>Signed in to GHES 3.22.3 for the first time, from the private workstation.</figcaption></figure><figure class="shot"><img src="assets/img/ghes/12-03-token-scopes.png" alt="The personal access token (classic) for the lab automation and its scopes." loading="lazy"><figcaption>The personal access token (classic) for the lab automation and its scopes.</figcaption></figure>
+</div><div class="module" id="m8"><div class="mhead"><div class="mnum">8</div><div><h2>Organisation, repository and guardrails</h2><div class="meta"><span class="pill">5 minutes</span><span class="pill">13-ghes-bootstrap.sh</span></div></div></div>
+<p>The script creates the <code>contoso</code> organisation and the <code>contoso-orders-api</code> repository, pushes the sample service with its two workflows, stores the AI settings as organisation variables (nothing here is secret) and protects <code>main</code> so that the <code>ai-review/foundry</code> status and one human approval are required.</p>
+<div class="code"><span class="lbl">Cloud Shell</span><button class="copy" type="button">Copy</button><pre>ws &#x27;bash 13-ghes-bootstrap.sh&#x27;</pre></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i>&nbsp;Admin workstation · 13-ghes-bootstrap.sh</div><pre>--- organisation contoso
+{&quot;login&quot;:&quot;contoso&quot;,&quot;url&quot;:&quot;https://ghes-contoso-spn236.indonesiacentral.cloudapp.azure.com/api/v3/orgs/contoso&quot;}
+--- repository contoso/contoso-orders-api
+{&quot;full_name&quot;:&quot;contoso/contoso-orders-api&quot;,&quot;private&quot;:true}
+--- push the sample app
+pushed main
+--- organisation Actions variables (non-secret configuration)
+  AI_ENDPOINT = https://apim-ghes-spn236.azure-api.net/openai/v1
+  MODEL_DEPLOYMENT = gpt-review
+  MCP_GITHUB_URL = http://mcp.lab.contoso.com:8082/mcp
+  MCP_STANDARDS_URL = http://mcp.lab.contoso.com:8080/mcp
+  REASONING_EFFORT = medium
+--- branch protection on main: AI review status required, 1 human approval
+{<span class="ok">&quot;checks&quot;:[&quot;ai-review/foundry&quot;]</span>,&quot;reviews&quot;:1}
+Repository: https://ghes-contoso-spn236.indonesiacentral.cloudapp.azure.com/contoso/contoso-orders-api
+<span class="ok">STEP 13 DONE</span></pre></div><figure class="shot"><img src="assets/img/ghes/13-03-repo-home.png" alt="The &lt;code&gt;contoso/contoso-orders-api&lt;/code&gt; repository on GHES, with the two workflows." loading="lazy"><figcaption>The <code>contoso/contoso-orders-api</code> repository on GHES, with the two workflows.</figcaption></figure><figure class="shot"><img src="assets/img/ghes/13-02-org-variables.png" alt="Organisation variables: where the gateway and the MCP servers are. No secrets." loading="lazy"><figcaption>Organisation variables: where the gateway and the MCP servers are. No secrets.</figcaption></figure><figure class="shot"><img src="assets/img/ghes/13-01-branch-rules.png" alt="Branch protection on &lt;code&gt;main&lt;/code&gt;: the &lt;code&gt;ai-review/foundry&lt;/code&gt; status and one approval are required." loading="lazy"><figcaption>Branch protection on <code>main</code>: the <code>ai-review/foundry</code> status and one approval are required.</figcaption></figure>
+</div><div class="module" id="m9"><div class="mhead"><div class="mnum">9</div><div><h2>Private runners with workload identity</h2><div class="meta"><span class="pill">10 minutes</span><span class="pill">20-runner-image.sh</span><span class="pill">21-arc-install.sh</span></div></div></div>
+<p>The review job runs on <b>Actions Runner Controller</b> in a private AKS cluster. The runner image bakes in the reviewer, its pinned dependencies and the Contoso CA, so jobs download nothing at run time. Each runner pod carries the <code>azure.workload.identity/use</code> label and a service account federated to the <code>id-ghes-reviewer</code> managed identity: that is how it gets Entra ID tokens without a secret.</p>
+<div class="code"><span class="lbl">Cloud Shell</span><button class="copy" type="button">Copy</button><pre>bash 20-runner-image.sh   # az acr build: no Docker needed in Cloud Shell
+bash 21-arc-install.sh   # az aks command invoke: the API server stays private</pre></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i>&nbsp;Azure Cloud Shell · Bash</div><pre>$ bash 20-runner-image.sh
+WARNING: Sending context (7.063 KiB) to registry: acrghesspn236...
+WARNING: Queued a build with ID: cm1
+<span class="ok">acrghesspn236.azurecr.io/ghes-ai-reviewer-runner:202611070600</span>
+202611070600
+latest</pre></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i>&nbsp;Azure Cloud Shell · bash 21-arc-install.sh</div><pre>Release &quot;ai-review-runners&quot; does not exist. Installing it now.
+Pulled: ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set:0.15.1
+NAME: ai-review-runners
+LAST DEPLOYED: Sat Nov  7 06:34:24 2026
+NAMESPACE: arc-runners
+<span class="ok">STATUS: deployed</span>
+REVISION: 1
+
+NAME                                   READY   STATUS    RESTARTS   AGE   IP             NODE
+ai-review-runners-6b8f66f9-listener    1/1     Running   0          56s   10.244.1.93    aks-system-27995657-vmss000000
+arc-gha-rs-controller-d6d787688-ddsrq  1/1     Running   0          68s   10.244.0.237   aks-system-27995657-vmss000001
+NAME                                   READY   STATUS    RESTARTS   AGE   IP             NODE
+ai-review-runners-runner-ksxq2         1/1     Running   0          33s   10.244.1.185   aks-system-27995657-vmss000000
+
+--- runners registered on GHES (checked from the admin workstation)
+{&quot;name&quot;:&quot;ai-review-runners-runner-ksxq2&quot;,<span class="ok">&quot;status&quot;:&quot;online&quot;</span>,&quot;labels&quot;:[]}</pre></div><figure class="shot"><img src="assets/img/ghes/21-01-org-runners.png" alt="GHES organisation settings: the &lt;code&gt;ai-review-runners&lt;/code&gt; scale set from AKS is online." loading="lazy"><figcaption>GHES organisation settings: the <code>ai-review-runners</code> scale set from AKS is online.</figcaption></figure>
+</div><div class="module" id="m10"><div class="mhead"><div class="mnum">10</div><div><h2>External MCP servers</h2><div class="meta"><span class="pill">5 minutes</span><span class="pill">30-mcp-check.sh</span></div></div></div>
+<p>The MCP VM runs two servers with Docker Compose and has no public IP. Its NSG only accepts traffic from the runner subnet.</p>
+<div class="grid2">
+<div class="card"><span class="tag t-blue">github-mcp-server :8082</span><h4>GitHub's official MCP server</h4><p>HTTP mode, <code>--read-only</code>, toolsets <code>repos,pull_requests</code>, pointed at GHES with <code>GITHUB_HOST</code>. It holds no credentials: every call carries the job's short-lived token.</p></div>
+<div class="card"><span class="tag t-purple">standards-mcp :8080</span><h4>Contoso engineering standards</h4><p>A small FastMCP server exposing <code>search_guidelines</code>, <code>get_standard</code> and <code>get_review_checklist</code> over the secure coding guide, API guidelines and ADRs (16 rules in 5 documents), so comments cite real rule IDs.</p></div>
+</div>
+<div class="code"><span class="lbl">Cloud Shell</span><button class="copy" type="button">Copy</button><pre>bash 30-mcp-check.sh</pre></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i>&nbsp;Azure Cloud Shell · bash 30-mcp-check.sh</div><pre>lab CA trusted
+SERVICE         STATE     PORTS
+github-mcp      running   0.0.0.0:8082-&gt;8082/tcp, [::]:8082-&gt;8082/tcp
+standards-mcp   running   0.0.0.0:8080-&gt;8080/tcp, [::]:8080-&gt;8080/tcp
+
+{<span class="ok">&quot;status&quot;:&quot;ok&quot;</span>,&quot;rules&quot;:16,&quot;documents&quot;:5}
+GHES resolves to: 10.30.1.10
+GHES over VPN: <span class="ok">HTTP 200</span> in 0.086561s</pre></div>
+</div><div class="module" id="m11"><div class="mhead"><div class="mnum">11</div><div><h2>The AI gateway and the model</h2><div class="meta"><span class="pill">Portal check</span><span class="pill">API Management</span><span class="pill">Microsoft Foundry</span></div></div></div>
+<p>Runners never call Foundry directly. They call <b>API Management</b> on a private IP; the gateway validates the caller's Entra ID token, enforces a per-repository token budget and emits token metrics, then forwards to Foundry with its own managed identity over Private Link.</p>
+<div class="code"><span class="lbl">API Management policy (excerpt)</span><button class="copy" type="button">Copy</button><pre>&lt;validate-azure-ad-token tenant-id=&quot;{tenant}&quot;&gt;
+  &lt;client-application-ids&gt;&lt;application-id&gt;{reviewer identity client id}&lt;/application-id&gt;&lt;/client-application-ids&gt;
+  &lt;audiences&gt;&lt;audience&gt;https://cognitiveservices.azure.com&lt;/audience&gt;&lt;/audiences&gt;
+&lt;/validate-azure-ad-token&gt;
+&lt;llm-token-limit counter-key=&quot;@(context.Request.Headers.GetValueOrDefault(&amp;quot;x-repo&amp;quot;))&quot;
+                 tokens-per-minute=&quot;100000&quot; token-quota=&quot;5000000&quot; token-quota-period=&quot;Monthly&quot; /&gt;
+&lt;llm-emit-token-metric namespace=&quot;ai-review&quot;&gt;&lt;dimension name=&quot;Repo&quot; value=&quot;...&quot; /&gt;&lt;/llm-emit-token-metric&gt;
+&lt;authentication-managed-identity resource=&quot;https://cognitiveservices.azure.com&quot; /&gt;
+&lt;set-backend-service backend-id=&quot;foundry-review&quot; /&gt;</pre></div>
+<figure class="shot"><img src="assets/img/24-portal-apim-ai-gateway-policy.png" alt="Azure portal, API Management → APIs → &lt;i&gt;Foundry OpenAI v1&lt;/i&gt; → All operations → Policies: token validation, per-repository token limit and metrics, managed identity to Foundry. Tenant and client IDs are blurred." loading="lazy"><figcaption>Azure portal, API Management → APIs → <i>Foundry OpenAI v1</i> → All operations → Policies: token validation, per-repository token limit and metrics, managed identity to Foundry. Tenant and client IDs are blurred.</figcaption></figure><div class="note"><b>Lesson learned: tools and reasoning.</b> Our first review failed with HTTP 400: <i>“Function tools with reasoning_effort are not supported … in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.”</i> The fix keeps the Chat Completions API and splits the review in two phases: the model first gathers context with the MCP tools (reasoning off), then writes the review over the diff plus that context with reasoning on and no tools. Moving to the Responses API is the other option.</div><div class="term"><div class="bar"><i></i><i></i><i></i>&nbsp;GHES Actions · first review attempt (before the fix)</div><pre>[ai-review 06:38:46] PR #1 &#x27;Add year-end discount codes&#x27;: 2 files, 2303 diff chars, model deployment &#x27;gpt-review&#x27;
+[ai-review 06:38:46] MCP github: http://mcp.lab.contoso.com:8082/mcp -&gt; 16 tools
+[ai-review 06:38:46] MCP standards: http://mcp.lab.contoso.com:8080/mcp -&gt; 4 tools
+[ai-review 06:38:55] FAILED: <span class="warn">BadRequestError</span>: Error code: 400 - {&#x27;error&#x27;: {&#x27;message&#x27;: &quot;Function tools with reasoning_effort are not supported for gpt-review in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to &#x27;none&#x27;.&quot;, &#x27;type&#x27;: &#x27;invalid_request_error&#x27;, &#x27;param&#x27;: &#x27;reasoning_effort&#x27;}}</pre></div>
+</div><div class="module" id="m12"><div class="mhead"><div class="mnum">12</div><div><h2>Run the demo pull request</h2><div class="meta"><span class="pill">5 minutes</span><span class="pill">40-demo-pr.sh</span></div></div></div>
+<p>The demo PR adds discount codes to the order service, with the kinds of problems reviewers catch every day: SQL built with an f-string, a hard-coded token, money calculated with floats, an HTTP call without a timeout, personal data in a log line, an unbounded page size, and a comment that tries to talk the AI reviewer into approving.</p>
+<div class="code"><span class="lbl">Cloud Shell</span><button class="copy" type="button">Copy</button><pre>ws &#x27;bash 40-demo-pr.sh&#x27;        # open the pull request and wait for the ai-review/foundry status
+ws &#x27;bash lib/joblog.sh&#x27;          # the reviewer&#x27;s lines from the job log, read through the GHES API</pre></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i>&nbsp;GHES Actions · AI review job log (runner on private AKS)</div><pre>Job is about to start running on the runner: ai-review-runners-runner-6dvvf (organization)
+[ai-review 06:50:51] PR #1 &#x27;Add year-end discount codes&#x27;: 2 files, 2303 diff chars, model deployment &#x27;gpt-review&#x27;
+[ai-review 06:50:51] MCP github: http://mcp.lab.contoso.com:8082/mcp -&gt; <span class="ok">16 tools</span>
+[ai-review 06:50:51] MCP standards: http://mcp.lab.contoso.com:8080/mcp -&gt; <span class="ok">4 tools</span>
+[ai-review 06:50:57] model gather 1: <span class="ok">3 tool calls</span>, 5379 tokens, 3.3s
+[ai-review 06:50:57] tool standards__search_guidelines({&quot;query&quot;: &quot;SQL injection parameterized queries secrets credentials source code hardcoded logging personal data HTTP time&quot;}) -&gt; 1961 chars
+[ai-review 06:50:57] tool standards__search_guidelines({&quot;query&quot;: &quot;reviewer prompt injection untrusted repository content instructions CSG-INJ-05&quot;}) -&gt; 1667 chars
+[ai-review 06:50:57] tool github__pull_request_read({&quot;owner&quot;: &quot;contoso&quot;, &quot;repo&quot;: &quot;contoso-orders-api&quot;, &quot;pullNumber&quot;: 1, &quot;method&quot;: &quot;get_diff&quot;, &quot;perPage&quot;: 100}) -&gt; 2239 chars
+[ai-review 06:50:59] model gather 2: 0 tool calls, 7193 tokens, 1.4s
+[ai-review 06:51:12] model review: 0 tool calls, 4787 tokens, 13.9s
+[ai-review 06:51:16] result {&quot;pr&quot;: 1, <span class="warn">&quot;verdict&quot;: &quot;request_changes&quot;</span>, &quot;counts&quot;: {&quot;critical&quot;: 1, &quot;high&quot;: 5, &quot;medium&quot;: 2, &quot;low&quot;: 0}, &quot;rules&quot;: [&quot;ADR-0007-1&quot;, &quot;API-HTTP-02&quot;, &quot;CSG-INJ-05&quot;, &quot;CSG-LOG-03&quot;, &quot;CSG-SEC-02&quot;, &quot;CSG-SQL-01&quot;], &quot;inline&quot;: 8, &quot;moved&quot;: 0, ...}</pre></div>
+<p>Then play the developer: <code>41-demo-fix.sh</code> pushes a second commit to the same branch that answers every finding (parameterised SQL, the token from the environment, integer money with basis points, timeouts, bounded inputs, unit tests). The workflow runs again on the new head commit and the status should turn green. The <a href="demo.html">demo page</a> walks through both reviews with screenshots.</p>
+<div class="code"><span class="lbl">Cloud Shell</span><button class="copy" type="button">Copy</button><pre>ws &#x27;bash 41-demo-fix.sh&#x27;</pre></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i>&nbsp;ai-review/foundry status on each commit of pull request #1</div><pre>Round 1  acfa0ac  Add year-end discount codes                       <span class="warn">failure</span>  6 blocking, 8 total findings (1 critical, 5 high, 2 medium)
+Round 2  a8d8979  Address AI review                                 <span class="warn">failure</span>  2 blocking, 5 total findings (2 high, 2 medium, 1 low)
+Round 3  adad8c5  Address AI review (round 2)                       <span class="warn">failure</span>  1 blocking, 2 total findings (1 high, 1 low)
+Round 4  e8cf8f5  Address AI review (round 3)                       <span class="ok">success</span>  0 blocking, 1 total finding (1 low)
+Final review summary: &quot;The new discount flow is generally parameterized, uses integer minor-unit calculations, and bounds pagination. One error-path issue remains for malformed request bodies.&quot;
+3 model calls · 27517+1821 tokens · 6 MCP tool calls</pre></div>
+</div><div class="module" id="m13"><div class="mhead"><div class="mnum">13</div><div><h2>Screenshots and the narrated video</h2><div class="meta"><span class="pill">Optional</span><span class="pill">lib/shots.py</span><span class="pill">lib/publish-media.sh</span><span class="pill">GitHub Actions</span></div></div></div>
+<p>GHES is private, so the screenshots of its web UI are taken on the workstation with headless Chromium. They travel to this public site without opening anything: the workstation pushes them to the lab container registry as an OCI artifact with its managed identity, and the <code>Import lab media</code> workflow pulls them with GitHub OIDC (workload identity federation, <code>AcrPull</code>) and commits them under <code>docs/</code>. The <code>Demo video</code> workflow narrates the scenes with Azure AI Speech (neural voice, Entra ID, no keys) and assembles the MP4 with ffmpeg.</p>
+<div class="code"><span class="lbl">Cloud Shell</span><button class="copy" type="button">Copy</button><pre>ws &#x27;bash 42-demo-collect.sh before&#x27;   # review results as JSON, job log, screenshots (after step 40)
+ws &#x27;bash 42-demo-collect.sh after&#x27;    # the same after the fix commit (after step 41)
+ws &#x27;bash lib/publish-media.sh shots&#x27;  # push /opt/lab/shots to the registry as lab-media:shots
+# then run the &#x27;Import lab media&#x27; and &#x27;Demo video&#x27; workflows in the public repository</pre></div>
+
+</div><div class="module" id="m14"><div class="mhead"><div class="mnum">14</div><div><h2>Clean up</h2><div class="meta"><span class="pill">2 minutes</span><span class="pill">99-cleanup.sh</span></div></div></div>
+<p>The VPN gateways, API Management, AKS, the GHES VM and the workstation are billed by the hour. Delete the three resource groups when you are done.</p>
+<div class="code"><span class="lbl">Cloud Shell</span><button class="copy" type="button">Copy</button><pre>bash 99-cleanup.sh</pre></div>
+</div>
+</main></div></div>
+<script src="assets/site.js"></script>
+</body></html>
