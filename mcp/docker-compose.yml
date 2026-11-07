@@ -1,0 +1,40 @@
+# External MCP tier (vm-mcp-01, private IP 10.40.4.10, DNS mcp.lab.contoso.com).
+# Reachable only from the AKS runner subnet (nsg-mcp). No secrets live here: every GitHub call
+# uses the caller's short-lived Actions job token, passed per request in the Authorization header.
+services:
+  github-mcp:
+    # GitHub's official MCP server in remote (HTTP) mode, pointed at GitHub Enterprise Server.
+    # Pin to a digest in production (ghcr.io/github/github-mcp-server@sha256:...).
+    image: ${GITHUB_MCP_IMAGE:-ghcr.io/github/github-mcp-server:latest}
+    command: ["http", "--port", "8082", "--read-only", "--toolsets", "repos,pull_requests"]
+    environment:
+      GITHUB_HOST: https://${GHES_HOST:?set GHES_HOST in .env}
+    ports:
+      - "8082:8082"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  standards-mcp:
+    # Contoso engineering standards (secure coding, API guidelines, ADRs) as MCP tools.
+    build: ./standards-mcp
+    image: contoso/standards-mcp:1.0
+    ports:
+      - "8080:8080"
+    environment:
+      ALLOWED_HOSTS: mcp.lab.contoso.com,10.40.4.10,localhost,127.0.0.1
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
