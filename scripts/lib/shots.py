@@ -31,7 +31,7 @@ with sync_playwright() as p:
     if page.locator("input[name=login]").count():
         page.fill("input[name=login]", USER)
         page.fill("input[name=password]", ENV["GHES_ADMIN_PASS"])
-        page.locator("input[type=submit], button[type=submit]").first.click()
+        page.locator("form:has(input[name=login]) [type=submit]").first.click()
         page.wait_for_load_state("networkidle")
     for arg in sys.argv[1:]:
         name, spec = arg.split("=", 1)

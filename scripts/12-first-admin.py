@@ -44,11 +44,11 @@ def dump_inputs(page):
 
 
 def sign_in(page):
-    page.goto(f"{BASE}/login")
+    page.goto(f"{BASE}/login", wait_until="networkidle")
     if page.locator("input[name=login]").count():
         page.fill("input[name=login]", USER)
         page.fill("input[name=password]", PASSWORD)
-        page.locator("input[type=submit], button[type=submit]").first.click()
+        page.locator("form:has(input[name=login]) [type=submit]").first.click()
         page.wait_for_load_state("networkidle")
 
 
@@ -65,7 +65,7 @@ with sync_playwright() as p:
         fill_first(page, ["input[name='user[password]']"], PASSWORD)
         fill_first(page, ["input[name='user[password_confirmation]']"], PASSWORD)
         shot(page, "12-01-create-first-admin")
-        page.locator("button[type=submit], input[type=submit]").last.click()
+        page.locator("form:has(input[name='user[login]']) [type=submit]").first.click()
         page.wait_for_load_state("networkidle")
         print("first administrator created:", USER, "->", page.url)
     else:
@@ -81,7 +81,7 @@ with sync_playwright() as p:
         page.goto(f"{BASE}/settings/tokens/new", wait_until="networkidle")
         if page.locator("input[name=sudo_password], input#sudo_password").count():  # sudo mode
             fill_first(page, ["input[name=sudo_password]", "input#sudo_password"], PASSWORD)
-            page.locator("button[type=submit], input[type=submit]").first.click()
+            page.locator("form:has(input[name=sudo_password]) [type=submit], form:has(#sudo_password) [type=submit]").first.click()
             page.wait_for_load_state("networkidle")
         if not fill_first(page, ["input[name='oauth_access[description]']", "input#oauth_access_description"], "ai-review-lab automation"):
             dump_inputs(page); sys.exit("token form not found")
