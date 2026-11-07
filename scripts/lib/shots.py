@@ -27,12 +27,21 @@ with sync_playwright() as p:
     ctx = browser.new_context(ignore_https_errors=True, viewport={"width": 1280, "height": 800},
                               storage_state=str(STATE) if STATE.exists() else None)
     page = ctx.new_page()
-    page.goto(f"{BASE}/login", wait_until="networkidle")
+    page.set_default_timeout(60_000)
+
+    def settle(ms=1500):  # GHES keeps live connections open: wait for "load", never for network idle
+        try:
+            page.wait_for_load_state("load", timeout=60_000)
+        except Exception:
+            pass
+        page.wait_for_timeout(ms)
+
+    page.goto(f"{BASE}/login", wait_until="domcontentloaded", timeout=90_000); settle()
     if page.locator("input[name=login]").count():
         page.fill("input[name=login]", USER)
         page.fill("input[name=password]", ENV["GHES_ADMIN_PASS"])
         page.locator("form:has(input[name=login]) [type=submit]").first.click()
-        page.wait_for_load_state("networkidle")
+        settle(3000)
     for arg in sys.argv[1:]:
         name, spec = arg.split("=", 1)
         sel = None
@@ -40,8 +49,8 @@ with sync_playwright() as p:
             spec, sel = spec.split("|", 1)
         full = spec.endswith("#full")
         path = spec[:-5] if full else spec
-        page.goto(BASE + path, wait_until="networkidle")
-        page.wait_for_timeout(1200)
+        page.goto(BASE + path, wait_until="domcontentloaded", timeout=90_000)
+        settle(2500)
         out = str(SHOTS / f"{name}.png")
         try:
             if sel:
