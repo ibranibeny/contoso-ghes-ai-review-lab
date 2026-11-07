@@ -19,7 +19,10 @@ import re, sys
 sql = open(sys.argv[1]).read().strip()
 p = "orders/db.py"; s = open(p).read()
 stmts = [x.strip() + ";" for x in sql.split(";") if x.strip()]
-add = [st for st in stmts if re.search(r"CREATE TABLE IF NOT EXISTS (\w+)", st).group(1) not in s]
+def key(st):  # a table name for CREATE TABLE, the statement itself otherwise
+    m = re.search(r"CREATE TABLE IF NOT EXISTS (\w+)", st)
+    return m.group(1) if m else st.splitlines()[-1]
+add = [st for st in stmts if key(st) not in s]
 if add:  # add only the tables the schema does not have yet
     head, sep, tail = s.partition('"""\n\n\ndef connect')
     s = head.rstrip("\n") + "\n" + "\n".join(add) + "\n" + sep + tail
