@@ -84,6 +84,16 @@ if [ -z "${GHES_HOST:-}" ] && az network public-ip show -g "$RG_ONP" -n pip-ghes
   GHES_PUBLIC_IP=$(az network public-ip show -g "$RG_ONP" -n pip-ghes --query ipAddress -o tsv); export GHES_PUBLIC_IP
   ST_ACTIONS=$(az storage account list -g "$RG_ONP" --query "[?starts_with(name,'stghesact')].name | [0]" -o tsv); export ST_ACTIONS
 fi
+if [ -z "${ACR_NAME:-}" ] && [ -n "${GHES_HOST:-}" ]; then
+  ACR_NAME=$(az acr list -g "$RG_AZ" --query "[0].name" -o tsv 2>/dev/null); export ACR_NAME
+  AKS_NAME=$(az aks list -g "$RG_AZ" --query "[0].name" -o tsv 2>/dev/null); export AKS_NAME
+  KV_NAME=$(az keyvault list -g "$RG_AZ" --query "[0].name" -o tsv 2>/dev/null); export KV_NAME
+  REVIEWER_CLIENT_ID=$(az identity show -g "$RG_AZ" -n id-ghes-reviewer --query clientId -o tsv 2>/dev/null); export REVIEWER_CLIENT_ID
+  FOUNDRY_ACCOUNT=$(az cognitiveservices account list -g "$RG_AI" --query "[0].name" -o tsv 2>/dev/null); export FOUNDRY_ACCOUNT
+  export MODEL_DEPLOYMENT="${MODEL_DEPLOYMENT:-gpt-review}"
+  UNIQ=${GHES_HOST#ghes-contoso-}; UNIQ=${UNIQ%%.*}
+  export AI_ENDPOINT="${AI_ENDPOINT:-https://apim-ghes-$UNIQ.azure-api.net/openai/v1}"
+fi
 
 ghes_api() { # ghes_api METHOD PATH [JSON] - REST call to the appliance with the admin token
   local m="$1" p="$2" d="${3:-}"

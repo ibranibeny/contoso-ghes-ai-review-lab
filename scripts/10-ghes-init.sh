@@ -21,11 +21,13 @@ curl -sk -u "api_key:$GHES_MGMT_PASS" -X POST "$M/access/ssh" -H 'Content-Type: 
 
 echo "--- apply configuration (10-20 minutes the first time)"
 RUN=$(curl -sk -u "api_key:$GHES_MGMT_PASS" -X POST "$M/config/apply" | jq -r '.run_id // empty')
-echo "run_id=$RUN"
-while :; do
+echo "run_id=$RUN"; echo "$RUN" > "$LAB/ghes-apply-run"
+sleep 30
+for i in $(seq 1 80); do   # up to 40 minutes
   S=$(curl -sk -u "api_key:$GHES_MGMT_PASS" "$M/config/apply${RUN:+?run_id=$RUN}")
-  echo "$(date +%H:%M:%S) $(echo "$S" | jq -c '[.nodes[]? | {node:.hostname, status:.status}] // .' 2>/dev/null | head -c 200)"
-  echo "$S" | jq -e '.running == false' >/dev/null 2>&1 && break
+  echo "$(date +%H:%M:%S) $(echo "$S" | jq -c '{running, successful, nodes: [.nodes[]?.status]}')"
+  # done when the run has stopped and the node reported a status
+  echo "$S" | jq -e '.running == false and ([.nodes[]?.status] | map(select(. != null)) | length > 0)' >/dev/null && break
   sleep 30
 done
 echo "$S" | jq '{running, successful}'

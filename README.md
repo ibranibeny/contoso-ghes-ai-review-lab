@@ -20,19 +20,21 @@ The two sites are joined by a site-to-site IPsec VPN (IKEv2), standing in for Ex
 
 ```bash
 git clone https://github.com/ibranibeny/contoso-ghes-ai-review-lab.git && cd contoso-ghes-ai-review-lab/scripts
-./00-preflight.sh                                   # providers, VM sizes, GHES image, models + quota in East US
-MODEL_NAME=<model> MODEL_VERSION=<version> PRESENTER_IP=<your-ip> ./01-deploy-infra.sh
-./02-wait-infra.sh                                  # 45-60 minutes: VPN gateways and API Management
-./10-ghes-init.sh ~/ghes-trial.ghl                  # license, root password, host name, apply
-./11-ghes-tls-actions.sh                            # Let's Encrypt + Actions on Azure Blob
-./12-ghes-bootstrap.sh                              # org, repo, variables, required status check
-./20-runner-image.sh && ./21-arc-install.sh         # runner image in ACR, ARC on private AKS
-./30-mcp-check.sh                                   # MCP servers up, GHES reachable over the VPN
-./40-demo-pr.sh                                     # open the demo PR and watch the AI review
-./99-cleanup.sh                                     # delete everything
+bash 00-preflight.sh                                  # providers, VM sizes, GHES image, models + quota in East US
+MODEL_NAME=gpt-5.6-terra MODEL_VERSION=2026-07-09 PRESENTER_IP=<your-ip> bash 01-deploy-infra.sh
+bash 02-wait-infra.sh                                 # 45-60 minutes: VPN gateways and API Management
+bash 10-ghes-init.sh ~/ghes-trial.ghl                 # license, root password, host name, apply
+bash 11-ghes-tls-actions.sh                           # Let's Encrypt + Actions on Azure Blob
+bash 12-ghes-bootstrap.sh                             # org, repo, variables, required status check
+bash 20-runner-image.sh && bash 21-arc-install.sh     # runner image in ACR, ARC on private AKS
+bash 30-mcp-check.sh                                  # MCP servers up, GHES reachable over the VPN
+bash 40-demo-pr.sh                                    # open the demo PR and watch the AI review
+bash 99-cleanup.sh                                    # delete everything
 ```
 
-You need a GHES license: request a 45-day trial at https://github.com/enterprise/trial and download the `.ghl` file.
+You need a GHES license: request a 45-day trial at https://enterprise.github.com/trial (choose *Deploy GitHub on Microsoft Azure*) and download the `.ghl` file to Cloud Shell.
+
+Cloud Shell without a storage account starts every session with an empty home folder. The scripts back up their state (generated secrets, SSH key, tokens) to the lab Key Vault and restore it automatically; run them with `bash` as shown.
 
 ## Repository layout
 
