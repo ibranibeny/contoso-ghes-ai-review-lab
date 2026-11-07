@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Step 41 (workstation): the developer answers the AI review with a second commit on the same branch.
 # The AI review runs again (pull_request_target: synchronize) and the ai-review/foundry status should turn green.
-# From Cloud Shell: ws "bash 41-demo-fix.sh"
+# From Cloud Shell: ws "bash 41-demo-fix.sh"                      (first answer: ghes/pr-demo-fix)
+#                  ws "bash 41-demo-fix.sh pr-demo-fix2 '<msg>'"  (second round: ghes/pr-demo-fix2)
 source ./00-variables.sh >/dev/null
-O=$GHES_ORG; R=contoso-orders-api; B=feature/discount-codes; FIX="$(cd .. && pwd)/ghes/pr-demo-fix"
+O=$GHES_ORG; R=contoso-orders-api; B=feature/discount-codes; FIX="$(cd .. && pwd)/ghes/${1:-pr-demo-fix}"
+MSG=${2:-"Address AI review: parameterized SQL, secret from environment, integer money, timeouts, bounded inputs, tests"}
 TMP=$(mktemp -d); cd "$TMP" || exit 1
 GIT="git -c http.sslCAInfo=$LAB/pki/ca.crt"
 $GIT clone -q -b "$B" "https://$GHES_ADMIN:$(cat "$LAB/ghes-token")@$GHES_HOST/$O/$R.git" . || exit 1
@@ -13,16 +15,18 @@ sed '1,2d' "$FIX/orders/app_patch.py" >> orders/app.py
 cp "$FIX/orders/discounts.py" orders/discounts.py
 mkdir -p tests && cp "$FIX/tests/test_discounts.py" tests/
 python3 - "$FIX/orders/db_schema_patch.sql" <<'PY'
-import sys
+import re, sys
 sql = open(sys.argv[1]).read().strip()
 p = "orders/db.py"; s = open(p).read()
-if "discount_codes" not in s:
+stmts = [x.strip() + ";" for x in sql.split(";") if x.strip()]
+add = [st for st in stmts if re.search(r"CREATE TABLE IF NOT EXISTS (\w+)", st).group(1) not in s]
+if add:  # add only the tables the schema does not have yet
     head, sep, tail = s.partition('"""\n\n\ndef connect')
-    s = head.rstrip("\n") + "\n" + sql + "\n" + sep + tail
+    s = head.rstrip("\n") + "\n" + "\n".join(add) + "\n" + sep + tail
 open(p, "w").write(s)
 PY
 git add -A
-git -c user.name="$GHES_ADMIN" -c user.email="$GHES_ADMIN_EMAIL" commit -qm "Address AI review: parameterized SQL, secret from environment, integer money, timeouts, bounded inputs, tests"
+git -c user.name="$GHES_ADMIN" -c user.email="$GHES_ADMIN_EMAIL" commit -qm "$MSG"
 $GIT push -q origin "$B" || exit 1
 SHA=$(git rev-parse HEAD); cd - >/dev/null || exit 1
 PR=$(ghes_api GET "/repos/$O/$R/pulls?head=$O:$B&state=open" | jq -r '.[0].number')
