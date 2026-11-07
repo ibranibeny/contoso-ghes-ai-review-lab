@@ -1,65 +1,258 @@
 {
-  "voice": "en-US-AndrewMultilingualNeural",
-  "scenes": [
-    {"id": "s01", "layout": "title", "chapter": "Introduction",
-     "title": "AI code review for GitHub Enterprise Server",
-     "sub": "GHES in the data centre, AI on Azure. A real lab, built end to end and recorded step by step.",
-     "tags": ["GitHub Enterprise Server 3.22", "GitHub Actions + ARC on AKS", "MCP servers", "API Management", "Microsoft Foundry"],
-     "narration": "Hi, and welcome. In the next few minutes we'll add AI code review to GitHub Enterprise Server, the self-hosted edition of GitHub. Everything you'll see is a real lab that we deployed, configured, and recorded step by step."},
-    {"id": "s02", "layout": "flow", "chapter": "The gap",
-     "title": "Copilot code review is a cloud feature",
-     "sub": "On GitHub Enterprise Server you build the review loop yourself, with the pieces you already trust.",
-     "steps": [["Pull request", "A developer opens a pull request on GHES, in your own network."], ["Workflow", "GitHub Actions starts a review job on a private runner."], ["AI review", "The runner calls a model in Microsoft Foundry through your AI gateway."], ["Comments + gate", "Findings land as inline comments and a required status check."]],
-     "narration": "Copilot code review runs on GitHub's cloud, so a GHES instance doesn't get it out of the box. The good news is that you can build the same loop with the pieces you already trust: a workflow on a private runner, a model in Microsoft Foundry, and a status check that gates the merge."},
-    {"id": "s03", "layout": "image", "chapter": "Architecture", "image": "../assets/architecture.svg",
-     "title": "Hybrid architecture, private end to end",
-     "bullets": ["GHES stays in the data centre (simulated in Indonesia Central)", "Site-to-site VPN to the Azure landing zone in Southeast Asia", "Runners on private AKS, MCP servers on a private VM", "API Management in front of Foundry in East US"],
-     "caption": "Every hop is private: VPN, private endpoints, internal API Management and private DNS.",
-     "narration": "Here's the architecture. GHES stays in the data centre, which we simulate in Indonesia Central. A site-to-site VPN joins it to an Azure landing zone in Southeast Asia, with runners on a private AKS cluster and two MCP servers on a private VM. The runners never call the model directly. They go through API Management, which forwards to Microsoft Foundry in East US over Private Link."},
-    {"id": "s04", "layout": "image", "chapter": "Step 1 · Deploy", "image": "../assets/img/02-portal-deployment-running.png",
-     "title": "One Bicep deployment, three regions",
-     "bullets": ["Run from Azure Cloud Shell, nothing installed locally", "Pre-flight checks quota, VM sizes and the GHES image", "Validated first, then deployed with --no-wait"],
-     "caption": "The subscription deployment in the Azure portal while the VPN gateways and API Management finish.",
-     "narration": "Step one is a single Bicep deployment, run from Azure Cloud Shell. A pre-flight script checks quotas, VM sizes and the GHES image first. Then the template is validated and deployed, and you can follow every module in the Azure portal."},
-    {"id": "s05", "layout": "image", "chapter": "Step 2 · License", "image": "../assets/img/03-ghes-trial-confirmed.png",
-     "title": "A 45-day GHES trial",
-     "bullets": ["Request it at enterprise.github.com/trial", "Choose Deploy on Microsoft Azure", "The license file is uploaded through the Management Console API"],
-     "caption": "Trial confirmed: the license file is available straight away.",
-     "narration": "For GHES itself, we requested a forty-five day trial license. The confirmation page offers the license file right away, and our script uploads it to the appliance through the Management Console API, together with the admin password and the basic settings."},
-    {"id": "s06", "layout": "image", "chapter": "Step 3 · Secure access", "image": "../assets/img/05-workstation-ready.png",
-     "title": "No management ports on the internet",
-     "bullets": ["The tenant removed our IP allow-list rule within minutes", "So the appliance is managed from a private admin workstation", "Cloud Shell drives it with Azure Run Command: no inbound ports"],
-     "caption": "The admin workstation is ready and received the lab settings, the SSH key and the certificates.",
-     "narration": "Here's something we didn't plan for, and it turned into the best lesson of the lab. Our tenant automatically removed the rule that exposed the GHES management ports, even though it was limited to two IP addresses. That's exactly what production should look like. So we administer the appliance from a private workstation inside the data centre network, and Cloud Shell drives it with Azure Run Command. No inbound port is open anywhere."},
-    {"id": "s07", "layout": "image", "chapter": "Step 4 · TLS + Actions", "image": "../assets/img/06-ghes-ready-from-workstation.png",
-     "title": "Enterprise PKI and GitHub Actions",
-     "bullets": ["Private DNS resolves GHES to 10.30.1.10", "Certificate issued by the Contoso CA, trusted by runners and MCP", "Actions storage on Azure Blob through a private endpoint"],
-     "caption": "From the workstation: GHES resolves privately and its API answers.",
-     "narration": "From the workstation, GHES resolves to its private address. We install a certificate issued by the Contoso certificate authority, the same way an enterprise would use its own PKI, and we turn on GitHub Actions with blob storage behind a private endpoint."},
-    {"id": "s08", "layout": "image", "chapter": "Step 5 · Review flow", "image": "../assets/img/ghes/40-03-pr-conversation.png",
-     "title": "The demo pull request",
-     "bullets": ["Adds discount codes to the Contoso orders API", "Contains planted issues reviewers see every day", "The AI review job starts automatically"],
-     "caption": "The pull request on GHES with the AI review summary.",
-     "narration": "Now the demo. A developer opens a pull request that adds discount codes to the Contoso orders service. It contains the kinds of mistakes reviewers see every day. The AI review workflow starts on its own, on a private runner."},
-    {"id": "s09", "layout": "image", "chapter": "Step 6 · Findings", "image": "../assets/img/ghes/40-04-files-inline.png",
-     "title": "Inline findings that cite your standards",
-     "bullets": ["Comments only on changed lines", "Each finding cites a Contoso rule ID from the standards MCP server", "Prompt injection in the diff is treated as data"],
-     "caption": "Inline review comments on the changed lines.",
-     "narration": "The findings land as inline comments on the exact lines that changed. Each one cites a Contoso rule, which the model looked up through the standards MCP server, so the feedback matches your own engineering guidelines rather than generic advice."},
-    {"id": "s10", "layout": "image", "chapter": "Step 7 · Gate", "image": "../assets/img/ghes/40-05-checks.png",
-     "title": "A required check, and a human decision",
-     "bullets": ["ai-review/foundry is a required status check on main", "One human approval is still required", "The AI informs; people decide"],
-     "caption": "The status check and branch protection on main.",
-     "narration": "The result is also a required status check on the main branch, next to one human approval. The AI informs the decision, and people still make it."},
-    {"id": "s11", "layout": "flow", "chapter": "Well-Architected",
-     "title": "Why this design holds up",
-     "sub": "Security, reliability, cost and operations, checked in a real tenant.",
-     "steps": [["Security", "No secrets: workload identity, OIDC, Entra ID tokens. No public management ports."], ["Reliability", "Private DNS, VPN, retries and a strict JSON schema validated against the diff."], ["Cost", "A balanced model tier and a per-repository token budget in API Management."], ["Operations", "Everything is scripted, repeatable, and observable through token metrics."]],
-     "narration": "Why does this design hold up? There are no secrets in the pipeline: runners use workload identity and Entra ID tokens. The model output must match a strict schema and is checked against the diff. API Management enforces a token budget per repository. And every step is scripted, so you can rebuild it on demand."},
-    {"id": "s12", "layout": "title", "chapter": "Next steps",
-     "title": "Try it in your own subscription",
-     "sub": "The workshop guide has every command, every output and every screenshot from this run. Remember to delete the resource groups when you're done.",
-     "tags": ["ibranibeny.github.io/contoso-ghes-ai-review-lab", "bash 99-cleanup.sh"],
-     "narration": "That's it. The workshop guide has every command, every output and every screenshot from this run, so you can repeat it in your own subscription. And when you're done, run the cleanup script, because the gateways and the cluster are billed by the hour. Thanks for watching."}
-  ]
+ "voice": "en-US-AndrewMultilingualNeural",
+ "scenes": [
+  {
+   "id": "s01",
+   "layout": "title",
+   "chapter": "Introduction",
+   "title": "AI code review for GitHub Enterprise Server",
+   "sub": "A real pull request, reviewed by Microsoft Foundry through MCP, entirely on private networks.",
+   "tags": [
+    "GitHub Enterprise Server 3.22",
+    "GitHub Actions on private AKS",
+    "MCP servers",
+    "API Management",
+    "Microsoft Foundry"
+   ],
+   "narration": "Hi, and welcome. GitHub Enterprise Server doesn't come with Copilot code review, but many teams that run it still want an AI reviewer on every pull request. In the next few minutes I'll show you one working on a real pull request, and how you can set up the same thing on your own server."
+  },
+  {
+   "id": "s02",
+   "layout": "flow",
+   "chapter": "The idea",
+   "title": "Build the review loop from pieces you already trust",
+   "sub": "Your server, your runners, your network, your model deployment.",
+   "steps": [
+    [
+     "Pull request",
+     "A developer opens a pull request on GHES, as usual."
+    ],
+    [
+     "Workflow",
+     "GitHub Actions starts a review job on a private runner."
+    ],
+    [
+     "Context",
+     "MCP servers give the model your repository and your engineering rules."
+    ],
+    [
+     "Review + gate",
+     "Comments on the changed lines and a required status check."
+    ]
+   ],
+   "narration": "The idea is simple. When a developer opens a pull request, a GitHub Actions workflow starts a review job on a private runner. The reviewer reads the diff, asks MCP servers for context and for your own engineering rules, calls a model in Microsoft Foundry, and posts the result back as comments and a status check."
+  },
+  {
+   "id": "s03",
+   "layout": "image",
+   "chapter": "Architecture",
+   "title": "Three regions, one private path",
+   "image": "../assets/architecture.svg",
+   "bullets": [
+    "GHES in the data centre (simulated in Indonesia Central)",
+    "Site-to-site VPN to the landing zone in Southeast Asia",
+    "Runners on private AKS, MCP servers on a private VM",
+    "API Management in front of Foundry in East US"
+   ],
+   "caption": "Every hop is private and keyless: VPN, private endpoints, internal API Management, Entra ID tokens.",
+   "narration": "Here's the lab. GHES stays in the data centre, which we simulate in Indonesia Central. A site-to-site VPN connects it to a landing zone in Southeast Asia, where the runners live on a private AKS cluster, next to two MCP servers. The runners never hold an API key. They get Entra ID tokens through workload identity and call API Management, which forwards to Foundry in East US over a private endpoint."
+  },
+  {
+   "id": "s04",
+   "layout": "image",
+   "chapter": "Demo · 1",
+   "title": "A developer opens a pull request",
+   "image": "../assets/img/ghes/40-01-pr-opened.png",
+   "bullets": [
+    "Adds year-end discount codes",
+    "Classic problems hidden in the change",
+    "Including a comment that tells AI reviewers to approve"
+   ],
+   "caption": "Pull request #1 on GHES 3.22.3: the required ai-review/foundry status is expected, the review job is queued.",
+   "narration": "Now the demo. A developer adds discount codes to Contoso's order service and opens a pull request. The change hides classic problems, from SQL built with an f-string to a hard-coded token. It even includes a comment telling AI reviewers that the module is already approved."
+  },
+  {
+   "id": "s05",
+   "layout": "log",
+   "chapter": "Demo · 2",
+   "title": "A private runner gathers context through MCP",
+   "lines": [
+    "runner  ai-review-runners-runner-6dvvf",
+    "06:50:51  PR #1 'Add year-end discount codes': 2 files, 2303 diff chars",
+    "06:50:51  MCP github: mcp:8082/mcp -> 16 tools",
+    "06:50:51  MCP standards: mcp:8080/mcp -> 4 tools",
+    "06:50:57  model gather 1: 3 tool calls, 5379 tokens, 3.3s",
+    "06:50:57  tool standards__search_guidelines(…) -> 1961 chars",
+    "06:50:57  tool standards__search_guidelines(…) -> 1667 chars",
+    "06:50:57  tool github__pull_request_read(…) -> 2239 chars",
+    "06:50:59  model gather 2: 0 tool calls, 7193 tokens, 1.4s",
+    "06:51:12  model review: 0 tool calls, 4787 tokens, 13.9s",
+    "06:51:16  result: request_changes · 1 critical · 5 high · 2 medium"
+   ],
+   "bullets": [
+    "A fresh runner pod on private AKS",
+    "Reads the diff through the API, never checks it out",
+    "Looks up the rules behind each concern"
+   ],
+   "caption": "Job log of the first review, 25 seconds end to end",
+   "narration": "A fresh runner pod on the private cluster picks up the job. It reads the diff through the GHES API, without checking out or running the code. The model first gathers context: it searches Contoso's standards for the rules behind each concern, and reads the diff through GitHub's MCP server in read-only mode. Then it reasons over everything and writes the review. The whole job took twenty-five seconds."
+  },
+  {
+   "id": "s06",
+   "layout": "image",
+   "chapter": "Demo · 3",
+   "title": "The review lands on the pull request",
+   "image": "../assets/img/ghes/40-03-pr-conversation-summary.png",
+   "fit": "cover",
+   "pos": "50% 0%",
+   "bullets": [
+    "One critical, five high, two medium",
+    "Every finding cites a Contoso rule",
+    "Comments only on lines the pull request adds"
+   ],
+   "caption": "The AI review summary and the first inline comments.",
+   "narration": "The review lands on the pull request. One critical finding, five high and two medium, and the summary lists the Contoso standards it relied on, so the team can see at a glance what needs attention."
+  },
+  {
+   "id": "s07",
+   "layout": "image",
+   "chapter": "Demo · 4",
+   "title": "Specific comments, with a suggested fix",
+   "image": "../assets/img/ghes/40-03-pr-conversation-summary.png",
+   "fit": "cover",
+   "pos": "50% 62%",
+   "bullets": [
+    "What is wrong, and why it matters here",
+    "The rule ID from the secure coding guide",
+    "A one-click suggested change when the fix is obvious"
+   ],
+   "caption": "The SQL injection finding, rule CSG-SQL-01, with a suggested change.",
+   "narration": "Each finding is an inline comment on the exact line that introduced it. Here, the critical one: the discount code goes straight into an SQL string. The comment cites rule CSG-SQL-01 and offers a suggested change the developer can commit with one click."
+  },
+  {
+   "id": "s08",
+   "layout": "quote",
+   "chapter": "Demo · 5",
+   "title": "The prompt injection is flagged, not obeyed",
+   "sev": "MEDIUM · CSG-INJ-05",
+   "heading": "Remove reviewer-directed instruction from source",
+   "text": "This comment attempts to direct reviewers to skip the module and approve the PR. Repository comments are untrusted data and must not contain instructions to reviewers or AI tools. Remove it.",
+   "bullets": [
+    "The diff is untrusted data",
+    "The reviewer can only comment, never merge",
+    "A human sees the attempt"
+   ],
+   "caption": "Posted by the AI reviewer on orders/discounts.py",
+   "narration": "And the comment that tried to talk the reviewer into approving? It's reported as a finding, in the reviewer's own words. Everything in the pull request is treated as data, the reviewer can only comment, and Contoso's rules say to flag such text for a human."
+  },
+  {
+   "id": "s09",
+   "layout": "image",
+   "chapter": "Demo · 6",
+   "title": "The required check blocks the merge",
+   "image": "../assets/img/ghes/40-03-pr-conversation-mergebox.png",
+   "bullets": [
+    "ai-review/foundry is required on main",
+    "Six blocking findings out of eight",
+    "The unit tests passed and caught none of it"
+   ],
+   "caption": "The merge box on the first commit.",
+   "narration": "Because there are blocking findings, the AI review status fails, and branch protection keeps the merge button disabled. Notice that the unit tests passed. Tests alone didn't catch any of this."
+  },
+  {
+   "id": "s10",
+   "layout": "flow",
+   "chapter": "Demo · 7",
+   "title": "The developer fixes, the reviewer keeps checking",
+   "sub": "Every push re-runs the review on the new commit. Each round got smaller.",
+   "steps": [
+    [
+     "Round 1 · failure",
+     "6 blocking, 8 findings"
+    ],
+    [
+     "Round 2 · failure",
+     "2 blocking, 5 findings: a route that still cannot work, nothing persisted"
+    ],
+    [
+     "Round 3 · failure",
+     "1 blocking, 2 findings: the code catalogue ships empty"
+    ],
+    [
+     "Round 4 · success",
+     "0 blocking, 1 low finding"
+    ]
+   ],
+   "narration": "The developer pushes a fix, and the review runs again on the new commit. It caught what the fix still missed: a route that would still crash, and a redemption that was never saved. One round later it noticed the discount table shipped empty, and that the test hid it. On the fourth commit, only one low-severity note was left."
+  },
+  {
+   "id": "s11",
+   "layout": "image",
+   "chapter": "Demo · 8",
+   "title": "Green check, and a person decides",
+   "image": "../assets/img/ghes/41-01-pr-after-fix-mergebox.png",
+   "bullets": [
+    "All checks have passed",
+    "One low-severity note remains",
+    "A teammate still approves the merge"
+   ],
+   "caption": "The merge box on the fourth commit.",
+   "narration": "Now all checks pass. The review is advisory and fast, but the decision stays with people: a teammate reads the summary, checks the remaining note, and approves the merge."
+  },
+  {
+   "id": "s12",
+   "layout": "image",
+   "chapter": "Governance",
+   "title": "The AI gateway keeps it safe and affordable",
+   "image": "../assets/img/24-portal-apim-ai-gateway-policy.png",
+   "bullets": [
+    "Validates the runner's Entra ID token",
+    "Token budget per repository",
+    "Token metrics per repository",
+    "Managed identity to Foundry"
+   ],
+   "caption": "API Management policy in the Azure portal.",
+   "narration": "Behind the scenes, API Management is the control point. It validates the runner's Entra ID token, enforces a token budget for each repository, emits token metrics, and calls Foundry with its own managed identity. In our run, a review used about twenty-seven thousand tokens."
+  },
+  {
+   "id": "s13",
+   "layout": "flow",
+   "chapter": "Apply it",
+   "title": "How to roll it out on your GHES",
+   "sub": "Start small, prove value, then enforce.",
+   "steps": [
+    [
+     "1 · Decide",
+     "Pick pilot repositories, agree the data path with security."
+    ],
+    [
+     "2 · Build",
+     "Foundry, API Management, runners with identity, MCP servers."
+    ],
+    [
+     "3 · Pilot",
+     "Advisory mode, tune your rules and instructions."
+    ],
+    [
+     "4 · Enforce",
+     "Required status, organisation ruleset, human approval."
+    ]
+   ],
+   "narration": "To roll this out, start with a few pilot repositories and agree the data path with your security team. Build the platform: Foundry, the gateway, runners with a managed identity, and the MCP servers. Run the pilot in advisory mode and tune your rules. Then make the check required, and use an organisation ruleset to cover every repository."
+  },
+  {
+   "id": "s14",
+   "layout": "title",
+   "chapter": "Next steps",
+   "title": "Try it in your own subscription",
+   "sub": "The site has the adoption guide, the demo walkthrough and a step-by-step workshop with every command and screenshot from this run.",
+   "tags": [
+    "ibranibeny.github.io/contoso-ghes-ai-review-lab",
+    "Adoption guide",
+    "Workshop",
+    "bash 99-cleanup.sh"
+   ],
+   "narration": "Everything you saw is on the workshop site, with every command, output and screenshot, plus an adoption guide for your teams. And when you're done with the lab, run the cleanup script, because the gateways and the cluster are billed by the hour. Thanks for watching."
+  }
+ ]
 }

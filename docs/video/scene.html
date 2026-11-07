@@ -35,6 +35,17 @@
   .flow { display: flex; gap: 18px; align-items: stretch; margin-top: 30px; }
   .flow div { flex: 1; border: 1px solid var(--line); border-radius: 16px; padding: 24px; background: #fff; font-size: 25px; line-height: 1.35; }
   .flow div b { display: block; color: var(--blue); font-size: 22px; margin-bottom: 8px; }
+  .shot.cover img { width: 100%; height: 100%; max-width: none; max-height: none; object-fit: cover; }
+  .term { flex: 1; background: #0d1117; border-radius: 18px; padding: 34px 40px; color: #c9d1d9;
+    font: 25px/1.55 "Cascadia Code", "DejaVu Sans Mono", Consolas, monospace; overflow: hidden; box-shadow: 0 18px 50px rgba(20,40,70,.16); }
+  .term .bar { color: #8b949e; font-size: 20px; margin-bottom: 18px; }
+  .term .hl { color: #7ee787; } .term .tool { color: #79c0ff; } .term .warn { color: #ffa657; }
+  .quote { flex: none; align-self: flex-start; border: 1px solid var(--line); border-left: 10px solid #bc4b09; border-radius: 18px; padding: 40px 48px; background: #fff;
+    box-shadow: 0 18px 50px rgba(20,40,70,.12); }
+  .quote .sev { display: inline-block; font-size: 24px; font-weight: 700; color: #bc4b09; background: #fff4ec; border-radius: 10px; padding: 6px 16px; }
+  .quote h2 { font-size: 44px; margin: 22px 0 18px; }
+  .quote p { font-size: 32px; line-height: 1.45; color: #2b3138; }
+  .quote .src { font-size: 22px; color: var(--muted); margin-top: 26px; }
 </style></head>
 <body><div id="root"></div>
 <script>
@@ -53,11 +64,23 @@ function render(data) {
     html = `<div class="frame">${brand}<div class="chip">${esc(s.chapter)}</div><h1>${esc(s.title)}</h1>
       <div class="sub">${esc(s.sub || "")}</div>
       <div class="flow">${(s.steps || []).map(x => `<div><b>${esc(x[0])}</b>${esc(x[1])}</div>`).join("")}</div></div>`;
+  } else if (s.layout === "log") {
+    const line = l => { let t = esc(l);
+      t = t.replace(/(tool [a-z_]+__[a-z_]+)/g, '<span class="tool">$1</span>').replace(/(-&gt; \d+ tools|request_changes|success)/g, '<span class="hl">$1</span>');
+      return t; };
+    html = `<div class="frame">${brand}<div class="chip">${esc(s.chapter)}</div><h1>${esc(s.title)}</h1>
+      <div class="body"><ul class="left">${(s.bullets || []).map(b => `<li>${esc(b)}</li>`).join("")}</ul>
+      <div class="right"><div class="term"><div class="bar">${esc(s.caption || "")}</div>${(s.lines || []).map(line).join("<br>")}</div></div></div></div>`;
+  } else if (s.layout === "quote") {
+    html = `<div class="frame">${brand}<div class="chip">${esc(s.chapter)}</div><h1>${esc(s.title)}</h1>
+      <div class="body"><ul class="left">${(s.bullets || []).map(b => `<li>${esc(b)}</li>`).join("")}</ul>
+      <div class="right"><div class="quote"><span class="sev">${esc(s.sev)}</span><h2>${esc(s.heading)}</h2><p>${esc(s.text)}</p>
+      <div class="src">${esc(s.caption || "")}</div></div></div></div></div>`;
   } else {
     if (s.layout === "wide") document.body.className = "wide";
     html = `<div class="frame">${brand}<div class="chip">${esc(s.chapter)}</div><h1>${esc(s.title)}</h1>
       <div class="body"><ul class="left">${(s.bullets || []).map(b => `<li>${esc(b)}</li>`).join("")}</ul>
-      <div class="right"><div class="shot ${s.align || ""}"><img src="${s.image}"></div><div class="cap">${esc(s.caption || "")}</div></div></div></div>`;
+      <div class="right"><div class="shot ${s.align || ""} ${s.fit || ""}"><img src="${s.image}" style="object-position:${s.pos || "50% 0%"}"></div><div class="cap">${esc(s.caption || "")}</div></div></div></div>`;
   }
   document.getElementById("root").innerHTML = html + `<div class="progress"><i style="width:${pct}%"></i></div>`;
 }
