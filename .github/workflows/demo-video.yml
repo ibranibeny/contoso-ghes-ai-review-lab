@@ -1,0 +1,40 @@
+# Builds the narrated demo video for the workshop site: neural voice (Azure AI Speech, keyless through OIDC),
+# scene stills rendered from docs/video/scene.html, assembled with ffmpeg, committed to docs/media.
+name: Demo video
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [demo-video]
+permissions:
+  id-token: write
+  contents: write
+concurrency: docs-media
+jobs:
+  video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+      - name: Tools
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg libasound2t64 fonts-dejavu-core >/dev/null
+          pip install -q azure-cognitiveservices-speech azure-identity
+      - name: Narration (Azure AI Speech, en-US-AndrewMultilingualNeural)
+        env:
+          SPEECH_ENDPOINT: ${{ vars.SPEECH_ENDPOINT }}
+        run: python3 tools/narrate.py
+      - name: Render
+        run: bash tools/render-video.sh
+      - name: Commit to the docs site
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/media
+          git diff --cached --quiet && echo "No change" && exit 0
+          git commit -m "Demo video: narrated build ($(date -u +%Y-%m-%dT%H:%MZ))"
+          git push

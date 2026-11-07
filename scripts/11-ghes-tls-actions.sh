@@ -9,7 +9,8 @@ SSH="ssh -p 122 -i $LAB/id_rsa -o StrictHostKeyChecking=accept-new -o ConnectTim
 echo "--- appliance reachable from the workstation (private DNS: $(getent hosts "$GHES_HOST" | awk '{print $1}'))"
 curl -sk -u "$AUTH" "$M/config/apply" | jq -c '{last_run_running: .running, last_run_successful: .successful}'
 
-echo "--- TLS: certificate for $GHES_HOST issued by the Contoso lab CA"
+echo "--- TLS: trust the Contoso lab CA on the appliance, then install the certificate issued by it for $GHES_HOST"
+$SSH -- "cat > /tmp/contoso-lab-ca.crt && ghe-ssl-ca-certificate-install -c /tmp/contoso-lab-ca.crt" < "$LAB/pki/ca.crt" 2>&1 | tail -2
 jq -n --rawfile c "$LAB/pki/ghes.crt" --rawfile k "$LAB/pki/ghes.key" '{github_ssl: {enabled: true, cert: $c, key: $k}}' > /tmp/tls.json
 curl -sk -u "$AUTH" -X PUT "$M/config/settings" -H 'Content-Type: application/json' --data @/tmp/tls.json -w 'settings: HTTP %{http_code}\n'
 rm -f /tmp/tls.json
