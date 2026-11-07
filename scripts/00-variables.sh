@@ -42,9 +42,10 @@ source "$LAB/secrets.env"
 [ -f "$LAB/id_rsa" ] || ssh-keygen -q -t rsa -b 4096 -N '' -C 'ghes-lab' -f "$LAB/id_rsa"
 export SSH_PUB="$LAB/id_rsa.pub"
 
-# Read deployment outputs once they exist (empty before the first deployment).
+# Read deployment outputs once the deployment has succeeded.
 out() { az deployment sub show -n "$DEPLOYMENT" --query "properties.outputs.$1.value" -o tsv 2>/dev/null; }
-if [ -z "${LAB_OUTPUTS_LOADED:-}" ] && az deployment sub show -n "$DEPLOYMENT" -o none 2>/dev/null; then
+DEPLOY_STATE=$(az deployment sub show -n "$DEPLOYMENT" --query properties.provisioningState -o tsv 2>/dev/null)
+if [ -z "${LAB_OUTPUTS_LOADED:-}" ] && [ "$DEPLOY_STATE" = "Succeeded" ]; then
   GHES_HOST="$(out ghesFqdn)";        export GHES_HOST
   GHES_PUBLIC_IP="$(out ghesPublicIp)"; export GHES_PUBLIC_IP
   ST_ACTIONS="$(out actionsStorageAccount)"; export ST_ACTIONS
@@ -56,6 +57,12 @@ if [ -z "${LAB_OUTPUTS_LOADED:-}" ] && az deployment sub show -n "$DEPLOYMENT" -
   MODEL_DEPLOYMENT="$(out modelDeployment)"; export MODEL_DEPLOYMENT
   FOUNDRY_ACCOUNT="$(out foundryAccount)";   export FOUNDRY_ACCOUNT
   export LAB_OUTPUTS_LOADED=1
+fi
+# While the deployment is still running (VPN gateways, API Management), read what already exists.
+if [ -z "${GHES_HOST:-}" ] && az network public-ip show -g "$RG_ONP" -n pip-ghes -o none 2>/dev/null; then
+  GHES_HOST=$(az network public-ip show -g "$RG_ONP" -n pip-ghes --query dnsSettings.fqdn -o tsv); export GHES_HOST
+  GHES_PUBLIC_IP=$(az network public-ip show -g "$RG_ONP" -n pip-ghes --query ipAddress -o tsv); export GHES_PUBLIC_IP
+  ST_ACTIONS=$(az storage account list -g "$RG_ONP" --query "[?starts_with(name,'stghesact')].name | [0]" -o tsv); export ST_ACTIONS
 fi
 
 ghes_api() { # ghes_api METHOD PATH [JSON] - REST call to the appliance with the admin token

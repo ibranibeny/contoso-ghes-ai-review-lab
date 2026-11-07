@@ -6,7 +6,7 @@ source ./00-variables.sh >/dev/null
 LIC="${1:-$HOME/ghes-trial.ghl}"; [ -f "$LIC" ] || { echo "License file not found: $LIC (upload it to Cloud Shell first)"; exit 1; }
 M="https://$GHES_HOST:8443/manage/v1"
 echo "Waiting for the appliance to answer on :8443 ..."
-until curl -sk -o /dev/null -w '%{http_code}' "$M/config/status" | grep -qE '^(200|401|404)$'; do sleep 20; printf .; done; echo
+until curl -sk -o /dev/null -w '%{http_code}' --max-time 20 "https://$GHES_HOST:8443/setup/start" | grep -qvE '^(000|502|503)$'; do sleep 20; printf .; done; echo
 
 echo "--- upload license + set root site admin password"
 curl -sk -X POST "$M/config/init" -F "license=@$LIC" -F "password=$GHES_MGMT_PASS" -w '\nHTTP %{http_code}\n'
