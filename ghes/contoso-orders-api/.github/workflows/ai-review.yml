@@ -1,0 +1,33 @@
+# AI code review on GitHub Enterprise Server (no built-in Copilot code review on GHES).
+# pull_request_target: the workflow definition comes from the base branch, so a pull request cannot change
+# how it is reviewed. The job never checks out or runs pull request code: it reads the diff over the API.
+name: AI review
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read        # read files for context (MCP get_file_contents)
+  pull-requests: write  # post the review
+  statuses: write       # ai-review/foundry commit status (required check on main)
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ai-review-runners          # ARC scale set on private AKS, workload identity, no secrets
+    timeout-minutes: 15
+    steps:
+      - name: Review with Microsoft Foundry + MCP
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # short-lived job token, also forwarded to the GitHub MCP server
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          AI_ENDPOINT: ${{ vars.AI_ENDPOINT }}         # API Management AI gateway (private), not Foundry directly
+          MODEL_DEPLOYMENT: ${{ vars.MODEL_DEPLOYMENT }}
+          MCP_GITHUB_URL: ${{ vars.MCP_GITHUB_URL }}
+          MCP_STANDARDS_URL: ${{ vars.MCP_STANDARDS_URL }}
+          REASONING_EFFORT: ${{ vars.REASONING_EFFORT }}
+        run: /opt/reviewer/.venv/bin/python /opt/reviewer/review.py
