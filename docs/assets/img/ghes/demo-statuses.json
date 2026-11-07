@@ -1,0 +1,46 @@
+[
+  {
+    "sha": "acfa0ac",
+    "state": "failure",
+    "statuses": [
+      {
+        "context": "ai-review/foundry",
+        "state": "failure",
+        "description": "6 blocking, 8 total findings"
+      }
+    ]
+  },
+  {
+    "sha": "a8d8979",
+    "state": "failure",
+    "statuses": [
+      {
+        "context": "ai-review/foundry",
+        "state": "failure",
+        "description": "2 blocking, 5 total findings"
+      }
+    ]
+  },
+  {
+    "sha": "adad8c5",
+    "state": "failure",
+    "statuses": [
+      {
+        "context": "ai-review/foundry",
+        "state": "failure",
+        "description": "1 blocking, 2 total findings"
+      }
+    ]
+  },
+  {
+    "sha": "e8cf8f5",
+    "state": "success",
+    "statuses": [
+      {
+        "context": "ai-review/foundry",
+        "state": "success",
+        "description": "0 blocking, 1 total findings"
+      }
+    ]
+  }
+]

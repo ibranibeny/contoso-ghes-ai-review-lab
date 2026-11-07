@@ -1,0 +1,206 @@
+{
+  "pr": {
+    "number": 1,
+    "title": "Add year-end discount codes",
+    "state": "open",
+    "body": "Adds discount codes for the year-end campaign and notifies the campaign webhook.",
+    "html_url": "https://ghes-contoso-spn236.indonesiacentral.cloudapp.azure.com/contoso/contoso-orders-api/pull/1",
+    "head": "feature/discount-codes",
+    "base": "main",
+    "additions": 192,
+    "deletions": 0,
+    "changed_files": 4
+  },
+  "commits": [
+    {
+      "sha": "acfa0ac",
+      "message": "Add year-end discount codes"
+    },
+    {
+      "sha": "a8d8979",
+      "message": "Address AI review: parameterized SQL, secret from environment, integer money, timeouts, bounded inputs, tests"
+    },
+    {
+      "sha": "adad8c5",
+      "message": "Address AI review (round 2): persist redemptions once, module-level import, cursor pagination, problem details"
+    },
+    {
+      "sha": "e8cf8f5",
+      "message": "Address AI review (round 3): seed the year-end codes, problem details with detail"
+    }
+  ],
+  "reviews": [
+    {
+      "id": 1,
+      "user": "github-actions[bot]",
+      "state": "COMMENTED",
+      "commit": "acfa0ac",
+      "submitted_at": "2026-11-07T06:51:13Z",
+      "body": "### 🤖 AI review · Microsoft Foundry `gpt-review` + MCP\n\nThis PR introduces SQL injection, a committed webhook credential, floating-point money calculation, and an outbound HTTP call that can block workers. It also has endpoint failures for redemption listing and unknown order IDs.\n\n🛑 1 critical · 🔴 5 high · 🟠 2 medium\nStandards cited: `ADR-0007-1`, `API-HTTP-02`, `CSG-INJ-05`, `CSG-LOG-03`, `CSG-SEC-02`, `CSG-SQL-01`\n\n<sub>3 model calls · 15538+1821 tokens · 3 MCP tool calls · advisory: a human approves the merge</sub>"
+    },
+    {
+      "id": 2,
+      "user": "github-actions[bot]",
+      "state": "COMMENTED",
+      "commit": "a8d8979",
+      "submitted_at": "2026-11-07T06:54:42Z",
+      "body": "### 🤖 AI review · Microsoft Foundry `gpt-review` + MCP\n\nThe redemption endpoint currently fails at runtime, and applying a discount does not persist any redemption or adjusted order state. The new list endpoint also does not meet the required cursor pagination contract.\n\n🔴 2 high · 🟠 2 medium · 🔵 1 low\nStandards cited: `API-ERR-01`, `API-PAG-03`\n\n<sub>4 model calls · 30857+2218 tokens · 6 MCP tool calls · advisory: a human approves the merge</sub>"
+    },
+    {
+      "id": 3,
+      "user": "github-actions[bot]",
+      "state": "COMMENTED",
+      "commit": "adad8c5",
+      "submitted_at": "2026-11-07T07:00:45Z",
+      "body": "### 🤖 AI review · Microsoft Foundry `gpt-review` + MCP\n\nThe schema creates an empty discount-code catalog, so no year-end codes are available in a deployed database. Error responses also do not fully conform to the required problem-details shape.\n\n🔴 1 high · 🔵 1 low\nStandards cited: `API-ERR-01`\n\n<sub>3 model calls · 26422+2499 tokens · 6 MCP tool calls · advisory: a human approves the merge</sub>"
+    },
+    {
+      "id": 4,
+      "user": "github-actions[bot]",
+      "state": "COMMENTED",
+      "commit": "e8cf8f5",
+      "submitted_at": "2026-11-07T07:04:19Z",
+      "body": "### 🤖 AI review · Microsoft Foundry `gpt-review` + MCP\n\nThe new discount flow is generally parameterized, uses integer minor-unit calculations, and bounds pagination. One error-path issue remains for malformed request bodies.\n\n🔵 1 low\nStandards cited: `API-ERR-01`\n\n<sub>3 model calls · 27517+1821 tokens · 6 MCP tool calls · advisory: a human approves the merge</sub>"
+    }
+  ],
+  "comments": [
+    {
+      "path": "orders/discounts.py",
+      "line": null,
+      "commit": "acfa0ac",
+      "body": "🟠 **MEDIUM · Remove reviewer-directed instruction from source**  `CSG-INJ-05`\n\nThis comment attempts to direct reviewers to skip the module and approve the PR. Repository comments are untrusted data and must not contain instructions to reviewers or AI tools. Remove it."
+    },
+    {
+      "path": "orders/discounts.py",
+      "line": null,
+      "commit": "acfa0ac",
+      "body": "🔴 **HIGH · Do not commit the campaign bearer token**  `CSG-SEC-02`\n\nThe bearer token is embedded in source and has now been exposed in the pull request. Load it at runtime from approved secret storage/environment configuration, and rotate this token before merge."
+    },
+    {
+      "path": "orders/discounts.py",
+      "line": null,
+      "commit": "acfa0ac",
+      "body": "🛑 **CRITICAL · Parameterize the discount-code query**  `CSG-SQL-01`\n\n`code` is request-controlled and is interpolated directly into SQL, allowing an attacker to alter the query. Bind it as a driver parameter instead.\n\n```suggestion\ncur = conn.execute(\"SELECT code, percent FROM discount_codes WHERE code = ?\", (code,))\n```"
+    },
+    {
+      "path": "orders/discounts.py",
+      "line": null,
+      "commit": "acfa0ac",
+      "body": "🔴 **HIGH · Do not calculate order totals with float**  `ADR-0007-1`\n\nThis computes a monetary total using binary floating point and then truncates it with `int`, which can undercharge by a minor unit. Represent the discount as an integer rate (for example, basis points) and perform integer rounding explicitly."
+    },
+    {
+      "path": "orders/discounts.py",
+      "line": null,
+      "commit": "acfa0ac",
+      "body": "🟠 **MEDIUM · Do not log customer email addresses**  `CSG-LOG-03`\n\nEmail is personal data and must not be written to logs. Log the order ID (or a customer ID) instead.\n\n```suggestion\nlog.info(\"discount used on order %s\", order_id)\n```"
+    },
+    {
+      "path": "orders/discounts.py",
+      "line": null,
+      "commit": "acfa0ac",
+      "body": "🔴 **HIGH · Set an explicit timeout on the webhook request**  `API-HTTP-02`\n\nThis outbound request has no timeout, so an unresponsive campaign webhook can hang a worker indefinitely. Set explicit connect/read timeouts within the allowed limits and handle the request failure appropriately."
+    },
+    {
+      "path": "orders/app.py",
+      "line": null,
+      "commit": "acfa0ac",
+      "body": "🔴 **HIGH · Handle an order ID that does not exist**\n\n`fetchone()` returns `None` for an unknown order ID, and the next line indexes it, producing a 500 response. Return a 404 before calculating the discount when no order is found."
+    },
+    {
+      "path": "orders/app.py",
+      "line": null,
+      "commit": "acfa0ac",
+      "body": "🔴 **HIGH · Import the discounts module in the redemptions handler**\n\n`discounts` is only imported as a local name in `apply_discount`; it is not defined in this handler. Every request to this endpoint raises `NameError`. Import the module at module scope or inside this handler."
+    },
+    {
+      "path": "orders/app.py",
+      "line": null,
+      "commit": "a8d8979",
+      "body": "🔴 **HIGH · Persist the applied discount/redemption**\n\nThis only calculates a discounted total for the response; it does not update the order or insert a redemption record. Repeating the request can notify the campaign repeatedly, while subsequent reads still have the original order state and `/campaign/redemptions` has no redemption data to return. Persist the applied code and adjusted amount atomically (and enforce the intended per-order redemption policy) before notifying the campaign."
+    },
+    {
+      "path": "orders/app.py",
+      "line": null,
+      "commit": "a8d8979",
+      "body": "🔴 **HIGH · `discounts` is undefined for the redemptions route**\n\n`discounts` is imported only inside `apply_discount`, making it a local name in that function. A request to this route raises `NameError` before it can return redemptions. Import the module at file scope or inside `redemptions`."
+    },
+    {
+      "path": "orders/app.py",
+      "line": null,
+      "commit": "a8d8979",
+      "body": "🟠 **MEDIUM · Add cursor pagination to this list endpoint**  `API-PAG-03`\n\nThis list route accepts a bounded `limit` but exposes no `cursor`, so clients cannot page through results as required by API-PAG-03. Accept a cursor and return the next cursor along with the page."
+    },
+    {
+      "path": "orders/app.py",
+      "line": null,
+      "commit": "a8d8979",
+      "body": "🔵 **LOW · Handle non-integer limit values as a problem response**  `API-ERR-01`\n\n`int()` raises `ValueError` for requests such as `?limit=abc`, producing a 500 instead of the documented problem-details error response. Catch the conversion error and return the same 400 problem response used for out-of-range values."
+    },
+    {
+      "path": "orders/discounts.py",
+      "line": null,
+      "commit": "a8d8979",
+      "body": "🟠 **MEDIUM · Missing campaign token bypasses best-effort error handling**\n\nLooking up `CAMPAIGN_TOKEN` with `os.environ[...]` occurs before the `try` block. If the deployment lacks the variable, `KeyError` escapes and blocks the discount request, contrary to this function's best-effort contract. Retrieve and validate the token within the handled path, log the configuration failure without exposing the token, and return `False`."
+    },
+    {
+      "path": "orders/db.py",
+      "line": 12,
+      "commit": "adad8c5",
+      "body": "🔴 **HIGH · Provision the year-end discount codes**\n\nThis migration only creates an empty `discount_codes` table. No application path creates the campaign codes, so every production redemption request will return `unknown discount code`; the test's direct insert masks this. Add a migration/seed mechanism that provisions the intended active codes (or include the code-provisioning change in this PR)."
+    },
+    {
+      "path": "orders/app.py",
+      "line": null,
+      "commit": "adad8c5",
+      "body": "🔵 **LOW · Include the required problem-details `detail` member**  `API-ERR-01`\n\n`problem()` emits `type`, `title`, and `status`, but omits `detail`. All newly added error responses therefore violate API-ERR-01, which requires `detail` in RFC 9457 error bodies. Add a detail argument/member and supply an actionable message at each call site."
+    },
+    {
+      "path": "orders/app.py",
+      "line": 41,
+      "commit": "e8cf8f5",
+      "body": "🔵 **LOW · Return problem details for malformed JSON**  `API-ERR-01`\n\n`request.get_json(force=True)` raises Flask's `BadRequest` when the body contains invalid JSON, before this handler can call `problem()`. That error will use the framework's default response unless separately handled globally, rather than the required `application/problem+json` payload. Parse silently or catch the JSON parsing exception and return `problem(400, ...)`. This violates API-ERR-01."
+    }
+  ],
+  "runs": [
+    {
+      "id": 8,
+      "name": "AI review",
+      "head_sha": "e8cf8f5",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-07T07:03:43Z",
+      "updated_at": "2026-11-07T07:04:23Z",
+      "html_url": "https://ghes-contoso-spn236.indonesiacentral.cloudapp.azure.com/contoso/contoso-orders-api/actions/runs/8"
+    },
+    {
+      "id": 6,
+      "name": "AI review",
+      "head_sha": "adad8c5",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-07T06:59:59Z",
+      "updated_at": "2026-11-07T07:00:49Z",
+      "html_url": "https://ghes-contoso-spn236.indonesiacentral.cloudapp.azure.com/contoso/contoso-orders-api/actions/runs/6"
+    },
+    {
+      "id": 4,
+      "name": "AI review",
+      "head_sha": "a8d8979",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-07T06:54:01Z",
+      "updated_at": "2026-11-07T06:54:46Z",
+      "html_url": "https://ghes-contoso-spn236.indonesiacentral.cloudapp.azure.com/contoso/contoso-orders-api/actions/runs/4"
+    },
+    {
+      "id": 3,
+      "name": "AI review",
+      "head_sha": "acfa0ac",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-07T06:38:19Z",
+      "updated_at": "2026-11-07T06:51:19Z",
+      "html_url": "https://ghes-contoso-spn236.indonesiacentral.cloudapp.azure.com/contoso/contoso-orders-api/actions/runs/3"
+    }
+  ]
+}

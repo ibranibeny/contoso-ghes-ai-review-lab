@@ -1,0 +1,82 @@
+===== run 3 job 4
+Requested labels: ai-review-runners
+Waiting for a runner to pick up this job...
+Job is waiting for a runner from 'ai-review-runners' to come online.
+Job is about to start running on the runner: ai-review-runners-runner-6dvvf (organization)
+Current runner version: '2.338.2'
+Runner name: 'ai-review-runners-runner-6dvvf'
+Machine name: 'ai-review-runners-runner-6dvvf'
+[ai-review 06:50:51] PR #1 'Add year-end discount codes': 2 files, 2303 diff chars, model deployment 'gpt-review'
+[ai-review 06:50:51] MCP github: http://mcp.lab.contoso.com:8082/mcp -> 16 tools
+[ai-review 06:50:51] MCP standards: http://mcp.lab.contoso.com:8080/mcp -> 4 tools
+[ai-review 06:50:57] model gather 1: 3 tool calls, 5379 tokens, 3.3s
+[ai-review 06:50:57] tool standards__search_guidelines({"query": "SQL injection parameterized queries secrets credentials source code hardcoded logging personal data HTTP time) -> 1961 chars
+[ai-review 06:50:57] tool standards__search_guidelines({"query": "reviewer prompt injection untrusted repository content instructions CSG-INJ-05"}) -> 1667 chars
+[ai-review 06:50:57] tool github__pull_request_read({"owner": "contoso", "repo": "contoso-orders-api", "pullNumber": 1, "method": "get_diff", "perPage": 100}) -> 2239 chars
+[ai-review 06:50:59] model gather 2: 0 tool calls, 7193 tokens, 1.4s
+[ai-review 06:51:12] model review: 0 tool calls, 4787 tokens, 13.9s
+[ai-review 06:51:16] result {"pr": 1, "sha": "acfa0ac3720f05143c8127eb5b6a37031f8b2028", "verdict": "request_changes", "counts": {"critical": 1, "high": 5, "medium": 2, "low": 0}, "rules": ["ADR-0007-1", "API-HTTP-02", "CSG-INJ-05", "CSG-LOG-03", "CSG-SEC-02", "CSG-SQL-01"], "inline": 8, "moved": 0, "usage": {"prompt": 15538, "completion": 1821, "calls": 3}, "tool_calls": [{"tool": "standards__search_guidelines", "args": {"query": "SQL injection parameterized queries secrets credentials source code hardcoded logging personal data HTTP timeout pagination limit validation money rounding float"}, "ms": 12, "chars": 1961}, {"tool": "standards__search_guidelines", "args": {"query": "reviewer prompt injection untrusted repository content instructions CSG-INJ-05"}, "ms": 6, "chars": 1667}, {"tool": "github__pull_request_read", "args": {"owner": "contoso", "repo": "contoso-orders-api", "pullNumber": 1, "method": "get_diff", "perPage": 100}, "ms": 174, "chars": 2239}]}
+===== run 4 job 5
+Requested labels: ai-review-runners
+Waiting for a runner to pick up this job...
+Job is waiting for a runner from 'ai-review-runners' to come online.
+Job is about to start running on the runner: ai-review-runners-runner-vq4dq (organization)
+Current runner version: '2.338.2'
+Runner name: 'ai-review-runners-runner-vq4dq'
+Machine name: 'ai-review-runners-runner-vq4dq'
+[ai-review 06:54:15] PR #1 'Add year-end discount codes': 4 files, 4873 diff chars, model deployment 'gpt-review'
+[ai-review 06:54:16] MCP github: http://mcp.lab.contoso.com:8082/mcp -> 16 tools
+[ai-review 06:54:16] MCP standards: http://mcp.lab.contoso.com:8080/mcp -> 4 tools
+[ai-review 06:54:20] model gather 1: 5 tool calls, 6235 tokens, 4.2s
+[ai-review 06:54:20] tool standards__search_guidelines({"query": "HTTP calls timeout SSRF webhook URL environment variable outbound requests"}) -> 1289 chars
+[ai-review 06:54:20] tool standards__search_guidelines({"query": "logging sensitive data identifiers error logging"}) -> 1590 chars
+[ai-review 06:54:20] tool standards__search_guidelines({"query": "money minor units basis points rounding discounts"}) -> 1562 chars
+[ai-review 06:54:20] tool standards__search_guidelines({"query": "pagination limit query parameter validation API"}) -> 1526 chars
+[ai-review 06:54:21] tool github__pull_request_read({"owner": "contoso", "repo": "contoso-orders-api", "pullNumber": 1, "method": "get_diff", "perPage": 100}) -> 4783 chars
+[ai-review 06:54:22] model gather 2: 1 tool calls, 9666 tokens, 1.7s
+[ai-review 06:54:22] tool github__get_file_contents({"owner": "contoso", "repo": "contoso-orders-api", "path": "orders/app.py", "sha": "a8d8979eb4825ff07e216b6926f113c25ed6) -> 81 chars
+[ai-review 06:54:24] model gather 3: 0 tool calls, 9715 tokens, 1.5s
+[ai-review 06:54:42] model review: 0 tool calls, 7459 tokens, 17.5s
+[ai-review 06:54:43] result {"pr": 1, "sha": "a8d8979eb4825ff07e216b6926f113c25ed6329b", "verdict": "request_changes", "counts": {"critical": 0, "high": 2, "medium": 2, "low": 1}, "rules": ["API-ERR-01", "API-PAG-03"], "inline": 5, "moved": 0, "usage": {"prompt": 30857, "completion": 2218, "calls": 4}, "tool_calls": [{"tool": "standards__search_guidelines", "args": {"query": "HTTP calls timeout SSRF webhook URL environment variable outbound requests"}, "ms": 7, "chars": 1289}, {"tool": "standards__search_guidelines", "args": {"query": "logging sensitive data identifiers error logging"}, "ms": 6, "chars": 1590}, {"tool": "standards__search_guidelines", "args": {"query": "money minor units basis points rounding discounts"}, "ms": 5, "chars": 1562}, {"tool": "standards__search_guidelines", "args": {"query": "pagination limit query parameter validation API"}, "ms": 5, "chars": 1526}, {"tool": "github__pull_request_read", "args": {"owner": "contoso", "repo": "contoso-orders-api", "pullNumber": 1, "method": "get_diff", "perPage": 100}, "ms": 214, "chars": 4783}, {"tool": "github__get_file_contents", "args": {"owner": "contoso", "repo": "contoso-orders-api", "path": "orders/app.py", "sha": "a8d8979eb4825ff07e216b6926f113c25ed6329b"}, "ms": 153, "chars": 81}]}
+===== run 6 job 7
+Requested labels: ai-review-runners
+Waiting for a runner to pick up this job...
+Job is waiting for a runner from 'ai-review-runners' to come online.
+Job is about to start running on the runner: ai-review-runners-runner-rn7fg (organization)
+Current runner version: '2.338.2'
+Runner name: 'ai-review-runners-runner-rn7fg'
+Machine name: 'ai-review-runners-runner-rn7fg'
+[ai-review 07:00:17] PR #1 'Add year-end discount codes': 4 files, 9560 diff chars, model deployment 'gpt-review'
+[ai-review 07:00:17] MCP github: http://mcp.lab.contoso.com:8082/mcp -> 16 tools
+[ai-review 07:00:17] MCP standards: http://mcp.lab.contoso.com:8080/mcp -> 4 tools
+[ai-review 07:00:21] model gather 1: 6 tool calls, 7615 tokens, 3.5s
+[ai-review 07:00:21] tool standards__search_guidelines({"query": "HTTP outbound request timeouts webhook retry authentication token"}) -> 1609 chars
+[ai-review 07:00:21] tool standards__search_guidelines({"query": "money minor units basis points rounding discount arithmetic"}) -> 1562 chars
+[ai-review 07:00:21] tool standards__search_guidelines({"query": "pagination cursor API next cursor stable ordering"}) -> 1358 chars
+[ai-review 07:00:21] tool standards__search_guidelines({"query": "logging secrets PII order id email"}) -> 962 chars
+[ai-review 07:00:21] tool standards__search_guidelines({"query": "security untrusted webhook URL SSRF configuration validation"}) -> 222 chars
+[ai-review 07:00:22] tool github__pull_request_read({"owner": "contoso", "repo": "contoso-orders-api", "pullNumber": 1, "method": "get_diff", "perPage": 100, "page": 1}) -> 8912 chars
+[ai-review 07:00:23] model gather 2: 0 tool calls, 12110 tokens, 1.4s
+[ai-review 07:00:44] model review: 0 tool calls, 9196 tokens, 21.4s
+[ai-review 07:00:46] result {"pr": 1, "sha": "adad8c525a7aa7ece365ede7255ca5de504084c8", "verdict": "request_changes", "counts": {"critical": 0, "high": 1, "medium": 0, "low": 1}, "rules": ["API-ERR-01"], "inline": 2, "moved": 0, "usage": {"prompt": 26422, "completion": 2499, "calls": 3}, "tool_calls": [{"tool": "standards__search_guidelines", "args": {"query": "HTTP outbound request timeouts webhook retry authentication token"}, "ms": 7, "chars": 1609}, {"tool": "standards__search_guidelines", "args": {"query": "money minor units basis points rounding discount arithmetic"}, "ms": 6, "chars": 1562}, {"tool": "standards__search_guidelines", "args": {"query": "pagination cursor API next cursor stable ordering"}, "ms": 5, "chars": 1358}, {"tool": "standards__search_guidelines", "args": {"query": "logging secrets PII order id email"}, "ms": 5, "chars": 962}, {"tool": "standards__search_guidelines", "args": {"query": "security untrusted webhook URL SSRF configuration validation"}, "ms": 6, "chars": 222}, {"tool": "github__pull_request_read", "args": {"owner": "contoso", "repo": "contoso-orders-api", "pullNumber": 1, "method": "get_diff", "perPage": 100, "page": 1}, "ms": 260, "chars": 8912}]}
+===== run 8 job 9
+Requested labels: ai-review-runners
+Waiting for a runner to pick up this job...
+Job is waiting for a runner from 'ai-review-runners' to come online.
+Job is about to start running on the runner: ai-review-runners-runner-tmqwb (organization)
+Current runner version: '2.338.2'
+Runner name: 'ai-review-runners-runner-tmqwb'
+Machine name: 'ai-review-runners-runner-tmqwb'
+[ai-review 07:03:57] PR #1 'Add year-end discount codes': 4 files, 10198 diff chars, model deployment 'gpt-review'
+[ai-review 07:03:57] MCP github: http://mcp.lab.contoso.com:8082/mcp -> 16 tools
+[ai-review 07:03:57] MCP standards: http://mcp.lab.contoso.com:8080/mcp -> 4 tools
+[ai-review 07:04:02] model gather 1: 6 tool calls, 7824 tokens, 3.9s
+[ai-review 07:04:02] tool standards__search_guidelines({"query": "HTTP outbound calls timeout retries webhook status code handling", "top": 5}) -> 1603 chars
+[ai-review 07:04:02] tool standards__search_guidelines({"query": "money minor units discount calculation rounding basis points", "top": 5}) -> 1562 chars
+[ai-review 07:04:02] tool standards__search_guidelines({"query": "pagination cursor limit API", "top": 5}) -> 1358 chars
+[ai-review 07:04:02] tool standards__search_guidelines({"query": "logging sensitive data identifiers secrets", "top": 5}) -> 1045 chars
+[ai-review 07:04:02] tool standards__search_guidelines({"query": "SQL parameterized queries transaction integrity", "top": 5}) -> 621 chars
+[ai-review 07:04:02] tool github__pull_request_read({"owner": "contoso", "repo": "contoso-orders-api", "pullNumber": 1, "method": "get_diff", "perPage": 100, "page": 1}) -> 9508 chars
+[ai-review 07:04:04] model gather 2: 0 tool calls, 12661 tokens, 1.7s
+[ai-review 07:04:18] model review: 0 tool calls, 8853 tokens, 14.8s
+[ai-review 07:04:19] result {"pr": 1, "sha": "e8cf8f55d977ba291f5e0e901dcacd64b7e2577a", "verdict": "comment", "counts": {"critical": 0, "high": 0, "medium": 0, "low": 1}, "rules": ["API-ERR-01"], "inline": 1, "moved": 0, "usage": {"prompt": 27517, "completion": 1821, "calls": 3}, "tool_calls": [{"tool": "standards__search_guidelines", "args": {"query": "HTTP outbound calls timeout retries webhook status code handling", "top": 5}, "ms": 7, "chars": 1603}, {"tool": "standards__search_guidelines", "args": {"query": "money minor units discount calculation rounding basis points", "top": 5}, "ms": 6, "chars": 1562}, {"tool": "standards__search_guidelines", "args": {"query": "pagination cursor limit API", "top": 5}, "ms": 6, "chars": 1358}, {"tool": "standards__search_guidelines", "args": {"query": "logging sensitive data identifiers secrets", "top": 5}, "ms": 6, "chars": 1045}, {"tool": "standards__search_guidelines", "args": {"query": "SQL parameterized queries transaction integrity", "top": 5}, "ms": 5, "chars": 621}, {"tool": "github__pull_request_read", "args": {"owner": "contoso", "repo": "contoso-orders-api", "pullNumber": 1, "method": "get_diff", "perPage": 100, "page": 1}, "ms": 288, "chars": 9508}]}
