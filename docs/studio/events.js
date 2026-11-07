@@ -358,16 +358,16 @@ window.STUDIO_EVENTS = {
   {
    "ts": "2026-11-07T12:28:59+07:00",
    "agent": "forge",
-   "type": "blocked",
+   "type": "log",
    "task": "T4",
    "text": "Tenant guardrail removed the management-port rule from nsg-ghes, even though it was IP-restricted"
   },
   {
    "ts": "2026-11-07T12:35:00+07:00",
    "agent": "lead",
-   "type": "decision_request",
+   "type": "plan",
    "task": "T4",
-   "text": "Fight the policy or adopt it? Adopting it: GHES gets no public admin path at all"
+   "text": "Decision: adopt the guardrail. GHES gets no public admin path at all; administer it from a private workstation"
   },
   {
    "ts": "2026-11-07T12:55:00+07:00",
@@ -414,7 +414,7 @@ window.STUDIO_EVENTS = {
   {
    "ts": "2026-11-07T13:17:07+07:00",
    "agent": "quill",
-   "type": "blocked",
+   "type": "log",
    "task": "T10",
    "text": "Video workflow sign-in failed: AADSTS700213. GitHub now sends immutable owner and repo IDs in the OIDC subject"
   },
@@ -431,6 +431,13 @@ window.STUDIO_EVENTS = {
    "type": "tool",
    "task": "T4",
    "text": "TLS + GitHub Actions apply 1727b03c started; Actions storage passed the precheck over its private endpoint"
+  },
+  {
+   "ts": "2026-11-07T13:20:00+07:00",
+   "agent": "quill",
+   "type": "tool",
+   "task": "T10",
+   "text": "Federated credential added for the new OIDC subject format; video sign-in and narration work"
   },
   {
    "ts": "2026-11-07T13:27:00+07:00",
@@ -470,7 +477,7 @@ window.STUDIO_EVENTS = {
   {
    "ts": "2026-11-07T13:38:55+07:00",
    "agent": "sage",
-   "type": "blocked",
+   "type": "log",
    "task": "T8",
    "text": "HTTP 400: function tools with reasoning_effort are not supported on /v1/chat/completions"
   },
@@ -524,10 +531,37 @@ window.STUDIO_EVENTS = {
    "text": "Screenshots pushed to ACR as an OCI artifact and imported to the site with GitHub OIDC"
   },
   {
-   "ts": "2026-11-07T14:20:00+07:00",
+   "ts": "2026-11-07T14:19:50+07:00",
    "agent": "lead",
    "type": "note",
    "text": "Demo complete on a real GHES. Next: publish the site and the narrated video"
+  },
+  {
+   "ts": "2026-11-07T14:20:30+07:00",
+   "agent": "quill",
+   "type": "tool",
+   "task": "T10",
+   "text": "Video workflow: Azure AI Speech narration (keyless), scenes in headless Chrome, ffmpeg. 14 scenes"
+  },
+  {
+   "ts": "2026-11-07T14:23:38+07:00",
+   "agent": "quill",
+   "type": "log",
+   "task": "T10",
+   "text": "Narrated video committed: 4:33, 14 chapters, English captions"
+  },
+  {
+   "ts": "2026-11-07T14:27:00+07:00",
+   "agent": "quill",
+   "type": "merge",
+   "task": "T10",
+   "text": "T10 merged: demo page with video, adoption guide, workshop and agent studio live on GitHub Pages"
+  },
+  {
+   "ts": "2026-11-07T14:30:00+07:00",
+   "agent": "lead",
+   "type": "note",
+   "text": "All 10 tasks done. The lab bills by the hour: run 99-cleanup.sh when the demo is over"
   }
  ]
 };
