@@ -1,0 +1,532 @@
+{
+ "schema": "contoso-agent-studio/v1",
+ "project": {
+  "title": "GHES AI Code Review Lab",
+  "goal": "Build a real AI code review demo for GitHub Enterprise Server: GHES on a VM in Indonesia Central, site-to-site VPN to Southeast Asia (AKS runners + MCP server VM), Microsoft Foundry in East US, plus a workshop site and narrated video.",
+  "repo": "ibranibeny/contoso-ghes-ai-review-lab",
+  "started": "2026-11-07T10:28:53+07:00",
+  "note": "Replay of the real lab run on 7 November 2026 (UTC+7). Times from 12:00 on come from the run logs; earlier planning times are approximate."
+ },
+ "agents": [
+  {
+   "id": "lead",
+   "name": "Copilot",
+   "title": "Lead agent",
+   "kind": "lead",
+   "color": "#0f6cbd",
+   "note": "Plans the work, assigns lanes, reviews and merges."
+  },
+  {
+   "id": "atlas",
+   "name": "Atlas",
+   "title": "Azure infrastructure",
+   "kind": "worker",
+   "color": "#107c41"
+  },
+  {
+   "id": "forge",
+   "name": "Forge",
+   "title": "GitHub Enterprise Server",
+   "kind": "worker",
+   "color": "#1b1f24"
+  },
+  {
+   "id": "pilot",
+   "name": "Pilot",
+   "title": "AKS runners",
+   "kind": "worker",
+   "color": "#6b3fa0"
+  },
+  {
+   "id": "relay",
+   "name": "Relay",
+   "title": "MCP servers",
+   "kind": "worker",
+   "color": "#bc4b09"
+  },
+  {
+   "id": "sage",
+   "name": "Sage",
+   "title": "Foundry AI reviewer",
+   "kind": "worker",
+   "color": "#8a5a00"
+  },
+  {
+   "id": "quill",
+   "name": "Quill",
+   "title": "Workshop site and video",
+   "kind": "worker",
+   "color": "#b42318"
+  },
+  {
+   "id": "pixel",
+   "name": "Pixel",
+   "title": "Agent studio",
+   "kind": "worker",
+   "color": "#0e7c86"
+  },
+  {
+   "id": "beny",
+   "name": "Beny",
+   "title": "Project owner",
+   "kind": "human",
+   "color": "#57606a",
+   "note": "Answers decisions at the podium."
+  }
+ ],
+ "tasks": [
+  {
+   "id": "T1",
+   "title": "Lab blueprint: Bicep, scripts, repo",
+   "lane": "atlas",
+   "deps": []
+  },
+  {
+   "id": "T2",
+   "title": "Deploy 3 regions + S2S VPN",
+   "lane": "atlas",
+   "deps": [
+    "T1"
+   ]
+  },
+  {
+   "id": "T3",
+   "title": "GHES 45-day trial license",
+   "lane": "forge",
+   "deps": []
+  },
+  {
+   "id": "T4",
+   "title": "Configure GHES: TLS, Actions, org",
+   "lane": "forge",
+   "deps": [
+    "T2",
+    "T3"
+   ]
+  },
+  {
+   "id": "T5",
+   "title": "ARC runners on AKS",
+   "lane": "pilot",
+   "deps": [
+    "T4"
+   ]
+  },
+  {
+   "id": "T6",
+   "title": "MCP server VM: GitHub + standards",
+   "lane": "relay",
+   "deps": [
+    "T2"
+   ]
+  },
+  {
+   "id": "T7",
+   "title": "Foundry model + APIM gateway",
+   "lane": "sage",
+   "deps": [
+    "T2"
+   ]
+  },
+  {
+   "id": "T8",
+   "title": "AI review on a real PR",
+   "lane": "sage",
+   "deps": [
+    "T5",
+    "T6",
+    "T7"
+   ]
+  },
+  {
+   "id": "T9",
+   "title": "Agent studio",
+   "lane": "pixel",
+   "deps": []
+  },
+  {
+   "id": "T10",
+   "title": "Workshop site + narrated video",
+   "lane": "quill",
+   "deps": [
+    "T8"
+   ]
+  }
+ ],
+ "events": [
+  {
+   "ts": "2026-11-07T10:28:53+07:00",
+   "agent": "lead",
+   "type": "goal",
+   "text": "New goal: a real AI code review demo on GitHub Enterprise Server, end to end",
+   "detail": "GHES on a VM in Indonesia Central, S2S VPN to Southeast Asia (AKS runners + MCP server VM), Microsoft Foundry in East US, plus a workshop site and narrated video."
+  },
+  {
+   "ts": "2026-11-07T10:29:41+07:00",
+   "agent": "lead",
+   "type": "plan",
+   "text": "Plan ready: 10 tasks across infra, GHES, runners, MCP, Foundry, studio and workshop"
+  },
+  {
+   "ts": "2026-11-07T10:30:15+07:00",
+   "agent": "lead",
+   "type": "assign",
+   "task": "T1",
+   "text": "Atlas owns the lab blueprint: Bicep modules, scripts and repo layout"
+  },
+  {
+   "ts": "2026-11-07T10:30:32+07:00",
+   "agent": "lead",
+   "type": "assign",
+   "task": "T3",
+   "text": "Forge owns the GHES 45-day trial license"
+  },
+  {
+   "ts": "2026-11-07T10:30:58+07:00",
+   "agent": "lead",
+   "type": "assign",
+   "text": "Lanes set: Pilot runners, Relay MCP, Sage Foundry, Quill workshop, Pixel studio"
+  },
+  {
+   "ts": "2026-11-07T10:31:20+07:00",
+   "agent": "atlas",
+   "type": "start",
+   "task": "T1",
+   "text": "Starting T1: Bicep modules, deploy scripts and the repo skeleton"
+  },
+  {
+   "ts": "2026-11-07T10:32:05+07:00",
+   "agent": "forge",
+   "type": "start",
+   "task": "T3",
+   "text": "Starting T3: get a GHES license for the lab"
+  },
+  {
+   "ts": "2026-11-07T10:33:12+07:00",
+   "agent": "atlas",
+   "type": "tool",
+   "task": "T1",
+   "text": "az bicep build --file main.bicep: OK"
+  },
+  {
+   "ts": "2026-11-07T10:35:18+07:00",
+   "agent": "forge",
+   "type": "decision_request",
+   "task": "T3",
+   "text": "Request a GHES 45-day trial or upload an existing .ghl?"
+  },
+  {
+   "ts": "2026-11-07T10:36:47+07:00",
+   "agent": "beny",
+   "type": "decision_answer",
+   "task": "T3",
+   "text": "Request a 45-day trial"
+  },
+  {
+   "ts": "2026-11-07T10:38:06+07:00",
+   "agent": "forge",
+   "type": "memory",
+   "text": "Browser automation cannot open localhost:8788 (policy)",
+   "detail": "Check pages from file:// or a hosted preview instead of a local web server."
+  },
+  {
+   "ts": "2026-11-07T10:39:02+07:00",
+   "agent": "forge",
+   "type": "blocked",
+   "task": "T3",
+   "text": "Waiting for GitHub sign-in to submit the trial form"
+  },
+  {
+   "ts": "2026-11-07T10:40:11+07:00",
+   "agent": "atlas",
+   "type": "tool",
+   "task": "T1",
+   "text": "01-deploy-infra.sh: Bicep build OK, pre-deployment validation passed"
+  },
+  {
+   "ts": "2026-11-07T10:42:10+07:00",
+   "agent": "lead",
+   "type": "review",
+   "task": "T1",
+   "text": "Reviewing T1: naming, address spaces, NSG rules, no secrets in code"
+  },
+  {
+   "ts": "2026-11-07T10:44:30+07:00",
+   "agent": "lead",
+   "type": "merge",
+   "task": "T1",
+   "text": "T1 merged: the lab blueprint is on main"
+  },
+  {
+   "ts": "2026-11-07T10:45:15+07:00",
+   "agent": "atlas",
+   "type": "start",
+   "task": "T2",
+   "text": "Starting T2: deploy 3 regions and the site-to-site VPN"
+  },
+  {
+   "ts": "2026-11-07T10:46:40+07:00",
+   "agent": "atlas",
+   "type": "tool",
+   "task": "T2",
+   "text": "Subscription deployment ghes-ai-lab started (--no-wait): three resource groups, two VPN gateways, API Management"
+  },
+  {
+   "ts": "2026-11-07T10:47:30+07:00",
+   "agent": "lead",
+   "type": "decision_request",
+   "task": "T9",
+   "text": "How should agents at work be shown?"
+  },
+  {
+   "ts": "2026-11-07T10:49:12+07:00",
+   "agent": "beny",
+   "type": "decision_answer",
+   "task": "T9",
+   "text": "Recreate an AgentCraft-style studio"
+  },
+  {
+   "ts": "2026-11-07T10:49:58+07:00",
+   "agent": "atlas",
+   "type": "log",
+   "task": "T2",
+   "text": "VPN gateways provisioning in both regions (about 30 min)"
+  },
+  {
+   "ts": "2026-11-07T10:50:40+07:00",
+   "agent": "pixel",
+   "type": "start",
+   "task": "T9",
+   "text": "Starting T9: an isometric agent studio driven by events.json"
+  },
+  {
+   "ts": "2026-11-07T11:45:00+07:00",
+   "agent": "lead",
+   "type": "merge",
+   "task": "T9",
+   "text": "T9 merged: the agent studio replays the lab's event log"
+  },
+  {
+   "ts": "2026-11-07T11:47:41+07:00",
+   "agent": "beny",
+   "type": "decision_answer",
+   "text": "Deploy the lab with the GHES trial, screenshot every step, automate all of it"
+  },
+  {
+   "ts": "2026-11-07T12:03:00+07:00",
+   "agent": "beny",
+   "type": "decision_answer",
+   "task": "T3",
+   "text": "Signed in to GitHub. Go ahead and submit the form."
+  },
+  {
+   "ts": "2026-11-07T12:05:00+07:00",
+   "agent": "forge",
+   "type": "tool",
+   "task": "T3",
+   "text": "Trial form submitted (GitHub Enterprise Server, 45 days, deploy on Microsoft Azure)"
+  },
+  {
+   "ts": "2026-11-07T12:07:00+07:00",
+   "agent": "forge",
+   "type": "done",
+   "task": "T3",
+   "text": "T3 done: trial confirmed, license file downloaded (stays in Cloud Shell and on the admin workstation)"
+  },
+  {
+   "ts": "2026-11-07T12:10:00+07:00",
+   "agent": "forge",
+   "type": "tool",
+   "task": "T3",
+   "text": "Trial license (.ghl) copied into Cloud Shell; GHES 3.22.3 VM running in Indonesia Central"
+  },
+  {
+   "ts": "2026-11-07T12:20:12+07:00",
+   "agent": "forge",
+   "type": "tool",
+   "task": "T4",
+   "text": "Management Console API: license, host name, admin SSH key accepted; configuration run 895c776e started"
+  },
+  {
+   "ts": "2026-11-07T12:22:00+07:00",
+   "agent": "pilot",
+   "type": "tool",
+   "task": "T5",
+   "text": "Runner image built in ACR without Docker: ghes-ai-reviewer-runner:202611070522"
+  },
+  {
+   "ts": "2026-11-07T12:28:59+07:00",
+   "agent": "forge",
+   "type": "blocked",
+   "task": "T4",
+   "text": "Tenant guardrail removed the management-port rule from nsg-ghes, even though it was IP-restricted"
+  },
+  {
+   "ts": "2026-11-07T12:35:00+07:00",
+   "agent": "lead",
+   "type": "decision_request",
+   "task": "T4",
+   "text": "Fight the policy or adopt it? Adopting it: GHES gets no public admin path at all"
+  },
+  {
+   "ts": "2026-11-07T12:55:00+07:00",
+   "agent": "atlas",
+   "type": "done",
+   "task": "T4",
+   "text": "Private admin workstation vm-corp-ws01: no public IP, NAT gateway egress, driven by Azure Run Command"
+  },
+  {
+   "ts": "2026-11-07T12:58:00+07:00",
+   "agent": "forge",
+   "type": "log",
+   "task": "T4",
+   "text": "From the workstation: GHES resolves to 10.30.1.10, configuration finished, API reports 3.22.3"
+  },
+  {
+   "ts": "2026-11-07T12:59:00+07:00",
+   "agent": "forge",
+   "type": "log",
+   "task": "T4",
+   "text": "TLS upload rejected: 'certificate is not signed by a trusted CA'. Fix: install the Contoso lab CA on the appliance first"
+  },
+  {
+   "ts": "2026-11-07T13:00:00+07:00",
+   "agent": "pilot",
+   "type": "tool",
+   "task": "T5",
+   "text": "Runner image rebuilt with the Contoso CA: 202611070600"
+  },
+  {
+   "ts": "2026-11-07T13:06:00+07:00",
+   "agent": "atlas",
+   "type": "merge",
+   "task": "T2",
+   "text": "Deployment ghes-ai-lab succeeded in all three regions, API Management included"
+  },
+  {
+   "ts": "2026-11-07T13:06:30+07:00",
+   "agent": "sage",
+   "type": "merge",
+   "task": "T7",
+   "text": "Foundry deployment gpt-review (gpt-5.6-terra) behind the API Management AI gateway, local auth off"
+  },
+  {
+   "ts": "2026-11-07T13:17:07+07:00",
+   "agent": "quill",
+   "type": "blocked",
+   "task": "T10",
+   "text": "Video workflow sign-in failed: AADSTS700213. GitHub now sends immutable owner and repo IDs in the OIDC subject"
+  },
+  {
+   "ts": "2026-11-07T13:19:00+07:00",
+   "agent": "quill",
+   "type": "log",
+   "task": "T10",
+   "text": "Federated credential added for the immutable subject; neural narration works with no keys"
+  },
+  {
+   "ts": "2026-11-07T13:19:39+07:00",
+   "agent": "forge",
+   "type": "tool",
+   "task": "T4",
+   "text": "TLS + GitHub Actions apply 1727b03c started; Actions storage passed the precheck over its private endpoint"
+  },
+  {
+   "ts": "2026-11-07T13:27:00+07:00",
+   "agent": "forge",
+   "type": "log",
+   "task": "T4",
+   "text": "First site admin and automation token created with headless Chromium (after replacing a network-idle wait)"
+  },
+  {
+   "ts": "2026-11-07T13:30:00+07:00",
+   "agent": "forge",
+   "type": "merge",
+   "task": "T4",
+   "text": "Org contoso, repo contoso-orders-api, main protected: ai-review/foundry + 1 approval required"
+  },
+  {
+   "ts": "2026-11-07T13:34:24+07:00",
+   "agent": "pilot",
+   "type": "merge",
+   "task": "T5",
+   "text": "ARC scale set ai-review-runners deployed on private AKS; runner online on GHES"
+  },
+  {
+   "ts": "2026-11-07T13:36:00+07:00",
+   "agent": "relay",
+   "type": "merge",
+   "task": "T6",
+   "text": "MCP VM trusts the lab CA; github-mcp + standards-mcp up; GHES over VPN: HTTP 200 in 0.087 s"
+  },
+  {
+   "ts": "2026-11-07T13:38:00+07:00",
+   "agent": "sage",
+   "type": "start",
+   "task": "T8",
+   "text": "Pull request #1 'Add year-end discount codes' opened on GHES"
+  },
+  {
+   "ts": "2026-11-07T13:38:55+07:00",
+   "agent": "sage",
+   "type": "blocked",
+   "task": "T8",
+   "text": "HTTP 400: function tools with reasoning_effort are not supported on /v1/chat/completions"
+  },
+  {
+   "ts": "2026-11-07T13:45:00+07:00",
+   "agent": "sage",
+   "type": "tool",
+   "task": "T8",
+   "text": "Reviewer split into two phases: gather context with MCP tools, then reason without tools. Image 202611070645"
+  },
+  {
+   "ts": "2026-11-07T13:51:16+07:00",
+   "agent": "sage",
+   "type": "log",
+   "task": "T8",
+   "text": "Round 1: 25 s, 3 MCP calls. 1 critical, 5 high, 2 medium. ai-review/foundry failed, merge blocked"
+  },
+  {
+   "ts": "2026-11-07T13:54:44+07:00",
+   "agent": "sage",
+   "type": "log",
+   "task": "T8",
+   "text": "Round 2 after the developer's fix: 2 blocking, 5 findings (route still crashes, redemption never saved)"
+  },
+  {
+   "ts": "2026-11-07T14:00:56+07:00",
+   "agent": "sage",
+   "type": "log",
+   "task": "T8",
+   "text": "Round 3: 1 blocking, 2 findings (discount catalogue ships empty; the test hid it)"
+  },
+  {
+   "ts": "2026-11-07T14:04:26+07:00",
+   "agent": "sage",
+   "type": "merge",
+   "task": "T8",
+   "text": "Round 4: 0 blocking, 1 low finding. ai-review/foundry passed; a human approval is still required"
+  },
+  {
+   "ts": "2026-11-07T14:10:00+07:00",
+   "agent": "quill",
+   "type": "start",
+   "task": "T10",
+   "text": "Starting T10: demo page, adoption guide, workshop modules and the narrated video from the real run"
+  },
+  {
+   "ts": "2026-11-07T14:12:00+07:00",
+   "agent": "quill",
+   "type": "tool",
+   "task": "T10",
+   "text": "Screenshots pushed to ACR as an OCI artifact and imported to the site with GitHub OIDC"
+  },
+  {
+   "ts": "2026-11-07T14:20:00+07:00",
+   "agent": "lead",
+   "type": "note",
+   "text": "Demo complete on a real GHES. Next: publish the site and the narrated video"
+  }
+ ]
+}

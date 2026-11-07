@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Contoso Agent Studio: an isometric replay of an AI agent team planning, coding, asking for decisions and merging work.">
+<title>Contoso Agent Studio</title>
+<link rel="stylesheet" href="studio.css">
+</head>
+<body>
+<div id="app" class="app">
+  <canvas id="stage" class="stage" role="img" aria-label="Isometric studio where AI agents plan, code, ask for decisions and merge work"></canvas>
+
+  <header id="topbar" class="hud topbar">
+    <div class="brand" title="Contoso Agent Studio">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="brand-name">Contoso Agent Studio</span>
+    </div>
+    <div class="project">
+      <div id="projTitle" class="project-title">Loading…</div>
+      <div id="projGoal" class="project-goal"></div>
+    </div>
+    <div class="stats">
+      <div class="stat" title="Done tasks / total tasks">
+        <div id="ring" class="ring"><span id="ringPct">0%</span></div>
+        <div class="stat-text"><span class="stat-k">Tasks done</span><span id="taskCount" class="stat-v">0/0</span></div>
+      </div>
+      <div id="waiting" class="stat waiting" title="Agents waiting for a human decision">
+        <span class="bell" aria-hidden="true"></span>
+        <div class="stat-text"><span class="stat-k">Waiting on you</span><span id="waitCount" class="stat-v">0</span></div>
+      </div>
+      <div class="stat clock" title="Real timestamp of the current event, in its original time zone">
+        <div class="stat-text"><span id="clockTz" class="stat-k">Event time</span><span id="clock" class="stat-v">--:--</span></div>
+      </div>
+      <span id="liveBadge" class="live-badge" hidden><i aria-hidden="true"></i>LIVE</span>
+    </div>
+  </header>
+
+  <aside id="side" class="hud side" aria-label="Selected agent and team">
+    <section id="agentCard" class="agent-card" aria-live="polite"></section>
+    <section class="team">
+      <h2 class="side-h">Team</h2>
+      <ul id="team" class="team-list"></ul>
+    </section>
+  </aside>
+
+  <footer id="bottom" class="hud bottom">
+    <div id="caption" class="caption" aria-live="polite">
+      <span id="capWho" class="cap-who"></span>
+      <span id="capTag" class="cap-tag"></span>
+      <span id="capText" class="cap-text"></span>
+      <span id="capIdx" class="cap-idx"></span>
+    </div>
+    <div id="controls" class="controls">
+      <button id="btnPrev" class="btn icon" type="button" aria-label="Previous event (Left arrow)" title="Previous event (←)"><span class="ico ico-prev"></span></button>
+      <button id="btnPlay" class="btn icon primary" type="button" aria-label="Play (Space)" title="Play / pause (Space)"><span class="ico ico-play"></span></button>
+      <button id="btnNext" class="btn icon" type="button" aria-label="Next event (Right arrow)" title="Next event (→)"><span class="ico ico-next"></span></button>
+      <div class="speeds" role="group" aria-label="Playback speed">
+        <button type="button" class="btn speed" data-speed="0.5">0.5×</button>
+        <button type="button" class="btn speed" data-speed="1">1×</button>
+        <button type="button" class="btn speed" data-speed="2">2×</button>
+        <button type="button" class="btn speed" data-speed="4">4×</button>
+      </div>
+      <div id="scrub" class="scrub" role="slider" tabindex="0" aria-label="Timeline" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
+        <canvas id="ticks" class="ticks"></canvas>
+        <div id="scrubFill" class="scrub-fill"></div>
+        <div id="scrubKnob" class="scrub-knob"></div>
+      </div>
+      <span id="timeLabel" class="time-label">0:00 / 0:00</span>
+      <button id="btnLive" class="btn live-btn" type="button" aria-pressed="false" title="Live mode (L): re-fetch events.json every 15 s">Live</button>
+    </div>
+  </footer>
+
+  <div id="libPop" class="popover" role="dialog" aria-label="Library" hidden></div>
+  <div id="tip" class="tip" hidden></div>
+  <div id="loading" class="loading">Loading studio…</div>
+</div>
+<script src="events.js"></script>
+<script src="studio.js"></script>
+</body>
+</html>
