@@ -5,6 +5,7 @@
 # Usage: bash 42-demo-collect.sh before   (after step 40: the first review, failing status)
 #        bash 42-demo-collect.sh after    (after step 41: the second review, green status)
 source ./00-variables.sh >/dev/null
+BUNDLE=/tmp/lab-bundle.crt; cat /etc/ssl/certs/ca-certificates.crt "$LAB/pki/ca.crt" > "$BUNDLE" 2>/dev/null
 PHASE=${1:-before}
 O=$GHES_ORG; R=contoso-orders-api; OUT=/opt/lab/shots; mkdir -p "$OUT"
 PR=$(ghes_api GET "/repos/$O/$R/pulls?state=all&head=$O:feature/discount-codes" | jq -r '.[0].number')
@@ -32,7 +33,7 @@ echo "--- reviewer job logs"
 for run in $(jq -r '.runs[] | select(.name=="AI review") | .id' "$OUT/demo-result.json" | sort -n); do
   for job in $(ghes_api GET "/repos/$O/$R/actions/runs/$run/jobs" | jq -r '.jobs[].id'); do
     echo "===== run $run job $job" >> "$OUT/demo-joblog.txt"
-    curl -s -L $CA_OPT -H "Authorization: token $(cat "$LAB/ghes-token")" \
+    curl -s -L --cacert "$BUNDLE" -H "Authorization: token $(cat "$LAB/ghes-token")" \
       "https://$GHES_HOST/api/v3/repos/$O/$R/actions/jobs/$job/logs" \
       | sed -E 's/^[0-9T:.-]+Z //' | grep -E "\[ai-review|runner|Runner name|Machine name|Job is about|Image:" >> "$OUT/demo-joblog.txt"
   done
