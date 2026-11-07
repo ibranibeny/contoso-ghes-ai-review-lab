@@ -1,0 +1,48 @@
+# Pulls the screenshots that the private admin workstation pushed to the lab container registry and commits them
+# to the docs site. Keyless: GitHub OIDC -> Microsoft Entra workload identity federation -> AcrPull.
+name: Import lab media
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Artifact tag in the lab registry (lab-media:<tag>)
+        default: shots
+  repository_dispatch:
+    types: [import-media]
+permissions:
+  id-token: write
+  contents: write
+concurrency: docs-media
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    env:
+      REGISTRY: ${{ vars.LAB_ACR }}.azurecr.io
+      TAG: ${{ github.event.inputs.tag || github.event.client_payload.tag || 'shots' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+      - uses: oras-project/setup-oras@v1
+      - name: Pull the screenshots from the lab registry
+        run: |
+          AAD=$(az account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv)
+          RT=$(curl -s -X POST "https://$REGISTRY/oauth2/exchange" --data-urlencode grant_type=access_token \
+                --data-urlencode "service=$REGISTRY" --data-urlencode "tenant=${{ vars.AZURE_TENANT_ID }}" \
+                --data-urlencode "access_token=$AAD" | jq -r .refresh_token)
+          echo "::add-mask::$RT"
+          echo "$RT" | oras login "$REGISTRY" -u 00000000-0000-0000-0000-000000000000 --password-stdin
+          mkdir -p docs/assets/img/ghes
+          oras pull "$REGISTRY/lab-media:$TAG" -o docs/assets/img/ghes
+          ls -la docs/assets/img/ghes
+      - name: Commit to the docs site
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/assets/img/ghes
+          git diff --cached --quiet && echo "No new screenshots" && exit 0
+          git commit -m "Import lab screenshots (lab-media:$TAG)"
+          git push
