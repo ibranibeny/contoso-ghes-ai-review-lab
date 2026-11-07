@@ -4,3 +4,4 @@
 params*.json
 __pycache__/
 runner/certs/*.crt
+docs/video/build/
