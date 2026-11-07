@@ -29,3 +29,4 @@ while :; do
   sleep 30
 done
 echo "$S" | jq '{running, successful}'
+lab_backup
