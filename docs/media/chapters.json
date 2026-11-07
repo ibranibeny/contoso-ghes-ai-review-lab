@@ -1,0 +1,75 @@
+{
+ "duration": 273.1,
+ "chapters": [
+  {
+   "id": "s01",
+   "title": "Introduction",
+   "start": 0.0
+  },
+  {
+   "id": "s02",
+   "title": "The idea",
+   "start": 18.12
+  },
+  {
+   "id": "s03",
+   "title": "Architecture",
+   "start": 40.17
+  },
+  {
+   "id": "s04",
+   "title": "Demo \u00b7 1",
+   "start": 69.4
+  },
+  {
+   "id": "s05",
+   "title": "Demo \u00b7 2",
+   "start": 88.43
+  },
+  {
+   "id": "s06",
+   "title": "Demo \u00b7 3",
+   "start": 115.42
+  },
+  {
+   "id": "s07",
+   "title": "Demo \u00b7 4",
+   "start": 128.38
+  },
+  {
+   "id": "s08",
+   "title": "Demo \u00b7 5",
+   "start": 147.26
+  },
+  {
+   "id": "s09",
+   "title": "Demo \u00b7 6",
+   "start": 164.16
+  },
+  {
+   "id": "s10",
+   "title": "Demo \u00b7 7",
+   "start": 177.55
+  },
+  {
+   "id": "s11",
+   "title": "Demo \u00b7 8",
+   "start": 199.38
+  },
+  {
+   "id": "s12",
+   "title": "Governance",
+   "start": 211.91
+  },
+  {
+   "id": "s13",
+   "title": "Apply it",
+   "start": 231.47
+  },
+  {
+   "id": "s14",
+   "title": "Next steps",
+   "start": 255.45
+  }
+ ]
+}

@@ -1,0 +1,142 @@
+WEBVTT
+
+00:00:00.104 --> 00:00:01.523
+Hi, and welcome.
+
+00:00:01.523 --> 00:00:10.169
+GitHub Enterprise Server doesn't come with Copilot code review, but many teams that run it still want an AI reviewer on every pull request.
+
+00:00:10.169 --> 00:00:17.424
+In the next few minutes I'll show you one working on a real pull request, and how you can set up the same thing on your own server.
+
+00:00:18.228 --> 00:00:19.882
+The idea is simple.
+
+00:00:19.882 --> 00:00:27.369
+When a developer opens a pull request, a GitHub Actions workflow starts a review job on a private runner.
+
+00:00:27.369 --> 00:00:39.466
+The reviewer reads the diff, asks MCP servers for context and for your own engineering rules, calls a model in Microsoft Foundry, and posts the result back as comments and a status check.
+
+00:00:40.492 --> 00:00:40.596
+Here's the lab.
+
+00:00:40.596 --> 00:00:46.208
+GHES stays in the data centre, which we simulate in Indonesia Central.
+
+00:00:46.208 --> 00:00:56.416
+A site-to-site VPN connects it to a landing zone in Southeast Asia, where the runners live on a private AKS cluster, next to two MCP servers.
+
+00:00:56.416 --> 00:00:58.838
+The runners never hold an API key.
+
+00:00:58.838 --> 00:01:08.696
+They get Entra ID tokens through workload identity and call API Management, which forwards to Foundry in East US over a private endpoint.
+
+00:01:09.487 --> 00:01:10.724
+Now the demo.
+
+00:01:10.724 --> 00:01:16.037
+A developer adds discount codes to Contoso's order service and opens a pull request.
+
+00:01:16.037 --> 00:01:22.261
+The change hides classic problems, from SQL built with an f-string to a hard-coded token.
+
+00:01:22.261 --> 00:01:27.733
+It even includes a comment telling AI reviewers that the module is already approved.
+
+00:01:28.524 --> 00:01:32.105
+A fresh runner pod on the private cluster picks up the job.
+
+00:01:32.105 --> 00:01:37.235
+It reads the diff through the GHES API, without checking out or running the code.
+
+00:01:37.235 --> 00:01:47.522
+The model first gathers context: it searches Contoso's standards for the rules behind each concern, and reads the diff through GitHub's MCP server in read-only mode.
+
+00:01:47.522 --> 00:01:50.907
+Then it reasons over everything and writes the review.
+
+00:01:50.907 --> 00:01:54.719
+The whole job took twenty-five seconds.
+
+00:01:55.523 --> 00:01:58.075
+The review lands on the pull request.
+
+00:01:58.075 --> 00:02:07.684
+One critical finding, five high and two medium, and the summary lists the Contoso standards it relied on, so the team can see at a glance what needs attention.
+
+00:02:08.488 --> 00:02:13.202
+Each finding is an inline comment on the exact line that introduced it.
+
+00:02:13.202 --> 00:02:18.189
+Here, the critical one: the discount code goes straight into an SQL string.
+
+00:02:18.189 --> 00:02:26.563
+The comment cites rule CSG-SQL-01 and offers a suggested change the developer can commit with one click.
+
+00:02:27.406 --> 00:02:30.909
+And the comment that tried to talk the reviewer into approving?
+
+00:02:30.909 --> 00:02:33.773
+It's reported as a finding, in the reviewer's own words.
+
+00:02:33.773 --> 00:02:43.458
+Everything in the pull request is treated as data, the reviewer can only comment, and Contoso's rules say to flag such text for a human.
+
+00:02:44.249 --> 00:02:51.905
+Because there are blocking findings, the AI review status fails, and branch protection keeps the merge button disabled.
+
+00:02:51.905 --> 00:02:54.184
+Notice that the unit tests passed.
+
+00:02:54.184 --> 00:02:56.854
+Tests alone didn't catch any of this.
+
+00:02:57.671 --> 00:03:02.697
+The developer pushes a fix, and the review runs again on the new commit.
+
+00:03:02.697 --> 00:03:09.442
+It caught what the fix still missed: a route that would still crash, and a redemption that was never saved.
+
+00:03:09.442 --> 00:03:14.559
+One round later it noticed the discount table shipped empty, and that the test hid it.
+
+00:03:14.559 --> 00:03:18.677
+On the fourth commit, only one low-severity note was left.
+
+00:03:19.468 --> 00:03:21.486
+Now all checks pass.
+
+00:03:21.486 --> 00:03:31.214
+The review is advisory and fast, but the decision stays with people: a teammate reads the summary, checks the remaining note, and approves the merge.
+
+00:03:32.018 --> 00:03:35.990
+Behind the scenes, API Management is the control point.
+
+00:03:35.990 --> 00:03:46.159
+It validates the runner's Entra ID token, enforces a token budget for each repository, emits token metrics, and calls Foundry with its own managed identity.
+
+00:03:46.159 --> 00:03:50.772
+In our run, a review used about twenty-seven thousand tokens.
+
+00:03:51.563 --> 00:03:57.696
+To roll this out, start with a few pilot repositories and agree the data path with your security team.
+
+00:03:57.696 --> 00:04:05.027
+Build the platform: Foundry, the gateway, runners with a managed identity, and the MCP servers.
+
+00:04:05.027 --> 00:04:08.881
+Run the pilot in advisory mode and tune your rules.
+
+00:04:08.881 --> 00:04:14.755
+Then make the check required, and use an organisation ruleset to cover every repository.
+
+00:04:15.533 --> 00:04:24.244
+Everything you saw is on the workshop site, with every command, output and screenshot, plus an adoption guide for your teams.
+
+00:04:24.244 --> 00:04:30.702
+And when you're done with the lab, run the cleanup script, because the gateways and the cluster are billed by the hour.
+
+00:04:30.702 --> 00:04:32.369
+Thanks for watching.
