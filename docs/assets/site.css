@@ -144,6 +144,7 @@ details.faq p{margin:0 0 16px 20px;color:#333b44}
 .chapters{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0}
 .chapters button{font:inherit;font-size:13.5px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 12px;cursor:pointer;color:var(--ink)}
 .chapters button:hover{border-color:var(--blue);color:var(--blue)}
+.chapters button .ts{color:var(--muted);font-variant-numeric:tabular-nums;margin-right:6px;font-size:12.5px}
 .timeline{position:relative;margin:26px 0 10px;padding-left:34px;border-left:2px solid var(--line)}
 .tstep{position:relative;margin:0 0 34px}
 .tstep::before{content:attr(data-n);position:absolute;left:-52px;top:0;width:34px;height:34px;border-radius:50%;background:#fff;border:2px solid var(--blue);color:var(--blue);display:grid;place-items:center;font-weight:700;font-size:14px}

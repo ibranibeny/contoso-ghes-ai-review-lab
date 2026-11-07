@@ -17,8 +17,11 @@
 
 <section class="block"><div class="wrap">
   <p class="kicker">Watch</p>
-  <h2>Four minutes, narrated</h2>
-  <p class="sub">The narrated video is being rendered and will appear here.</p>
+  <h2>4:33 minutes, narrated, with captions</h2>
+  <div class="video"><video id="demo-video" controls preload="metadata" poster="media/demo-poster.png">
+  <source src="media/demo.mp4" type="video/mp4"><track kind="captions" src="media/demo.vtt" srclang="en" label="English" default></video></div>
+  <div class="chapters"><button type="button" data-t="0.0"><span class="ts">0:00</span>Introduction</button><button type="button" data-t="18.12"><span class="ts">0:18</span>The idea</button><button type="button" data-t="40.17"><span class="ts">0:40</span>Architecture</button><button type="button" data-t="69.4"><span class="ts">1:09</span>Pull request opened</button><button type="button" data-t="88.43"><span class="ts">1:28</span>Runner gathers context</button><button type="button" data-t="115.42"><span class="ts">1:55</span>Review lands</button><button type="button" data-t="128.38"><span class="ts">2:08</span>Inline comments</button><button type="button" data-t="147.26"><span class="ts">2:27</span>Prompt injection</button><button type="button" data-t="164.16"><span class="ts">2:44</span>Merge blocked</button><button type="button" data-t="177.55"><span class="ts">2:57</span>Fix and re-review</button><button type="button" data-t="199.38"><span class="ts">3:19</span>Green check</button><button type="button" data-t="211.91"><span class="ts">3:31</span>AI gateway</button><button type="button" data-t="231.47"><span class="ts">3:51</span>Apply it</button><button type="button" data-t="255.45"><span class="ts">4:15</span>Next steps</button></div>
+  <script>document.querySelectorAll('.chapters button').forEach(b=>b.onclick=()=>{const v=document.getElementById('demo-video');v.currentTime=+b.dataset.t;v.play();});</script>
   <div class="kpis"><div class="kpi"><b>8</b><span>findings on the first commit</span></div><div class="kpi"><b>6</b><span>of them blocking (critical or high)</span></div><div class="kpi"><b>22–29 s</b><span>per review, on a fresh runner pod</span></div><div class="kpi"><b>4</b><span>review rounds until the check passed</span></div></div>
 </div></section>
 
